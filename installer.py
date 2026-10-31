@@ -5,6 +5,8 @@ meldet das Lua-Skript in allen Szenensammlungen an. OBS muss dafuer geschlossen 
 
 Das Lua-Skript kann Pfade mit Sonderzeichen nicht oeffnen. Enthaelt der Benutzerpfad welche, zum Beispiel
 einen Umlaut im Windows-Namen, wird stattdessen nach %PROGRAMDATA%\\GVLMediaStudio installiert.
+
+Blockiert der Virenschutz das Kopieren, bleibt das Programm im entpackten Ordner und OBS startet es von dort.
 """
 import ctypes
 import json
@@ -209,24 +211,39 @@ def copy_program(source):
             time.sleep(COPY_DELAY)
 
 
+def missing_files(folder):
+    return [name for name in REQUIRED_FILES if not os.path.isfile(os.path.join(folder, name))]
+
+
 def install():
     source = os.path.dirname(os.path.abspath(sys.executable))
+    program = TARGET
     if os.path.normcase(source) != os.path.normcase(TARGET):
         stop_service()
         for folder in (USER_TARGET, SHARED_TARGET):
             shutil.rmtree(folder, onexc=force_delete)
-        copy_program(source)
-    missing = [name for name in REQUIRED_FILES if not os.path.isfile(os.path.join(TARGET, name))]
+        try:
+            copy_program(source)
+            blocked = bool(missing_files(TARGET))
+        except shutil.Error:
+            if not source.isascii():
+                raise
+            blocked = True
+        if blocked and source.isascii():
+            shutil.rmtree(TARGET, onexc=force_delete)
+            program = source
+    missing = missing_files(program)
     if missing:
-        raise OSError(f"Dateien fehlen in {TARGET}: {', '.join(missing)}. Der Virenschutz hat sie eventuell entfernt.")
-    dock = {"title": TITLE, "url": Path(TARGET, "loader.html").as_uri(), "uuid": DOCK_UUID}
-    script = {"path": os.path.join(TARGET, SCRIPT).replace("\\", "/"), "settings": {}}
+        raise OSError(f"Dateien fehlen in {program}: {', '.join(missing)}. Der Virenschutz hat sie eventuell entfernt.")
+    dock = {"title": TITLE, "url": Path(program, "loader.html").as_uri(), "uuid": DOCK_UUID}
+    script = {"path": os.path.join(program, SCRIPT).replace("\\", "/"), "settings": {}}
     for path in config_files():
         set_docks(path, lambda docks: other_docks(docks) + [dock])
     for path in scene_files():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))] + [script])
     set_replay_buffer(True)
-    message("GVL Media Studio ist installiert.\n\nOBS starten und unter Docks den Eintrag GVL Media Studio einschalten.")
+    note = "" if program == TARGET else f"\n\nDer Virenschutz hat das Kopieren blockiert. Das Programm bleibt deshalb in diesem Ordner, den Ordner bitte nicht verschieben oder loeschen:\n{program}"
+    message(f"GVL Media Studio ist installiert.\n\nOBS starten und unter Docks den Eintrag GVL Media Studio einschalten.{note}")
 
 
 def uninstall():
@@ -247,8 +264,14 @@ def started_from_package():
     return getattr(sys, "frozen", False) and len(sys.argv) == 1 and folder not in installed
 
 
+def is_installed():
+    if os.path.isfile(os.path.join(TARGET, REQUIRED_FILES[0])):
+        return True
+    return any(TITLE in read_text(path) for path in config_files() if os.path.isfile(path))
+
+
 def choose():
-    if not os.path.isfile(os.path.join(TARGET, REQUIRED_FILES[0])):
+    if not is_installed():
         run(install)
         return
     text = "GVL Media Studio ist schon installiert.\n\nJa: installieren oder aktualisieren\nNein: entfernen\nAbbrechen: nichts tun"

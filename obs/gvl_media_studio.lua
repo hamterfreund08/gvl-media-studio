@@ -34,7 +34,7 @@ local function start_service()
 	os.remove(ready_file())
 	local exe = script_path() .. EXE_NAME
 	if file_exists(exe) then
-		shell.ShellExecuteA(nil, "open", exe, nil, script_path(), 0)
+		shell.ShellExecuteA(nil, "open", exe, "--service", script_path(), 0)
 	else
 		obs.script_log(obs.LOG_WARNING, "GVL Media Studio nicht gefunden: " .. exe)
 	end

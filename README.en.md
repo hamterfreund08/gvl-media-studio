@@ -83,6 +83,8 @@ The panel is now available and the `GVL Broadcast Overlay` source is in your sce
 
 > Windows SmartScreen may warn you on the first start because the program is not signed. Click **More info** and **Run anyway**. Only download the file from this repository.
 
+If your antivirus blocks the copy, the program stays in the extracted folder and the confirmation tells you so. Do not move or delete that folder in that case.
+
 ### Updating
 
 Close OBS, extract the new ZIP, run `GVL Media Studio.exe` there and answer **Yes** to the question. Your settings and stream plan are kept.

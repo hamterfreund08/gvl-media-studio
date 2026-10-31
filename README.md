@@ -76,7 +76,7 @@ Python oder andere Programme musst du für die normale Nutzung nicht installiere
 1. Lade die aktuelle [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip) herunter.
 2. Entpacke die ZIP komplett in einen Ordner. Starte nichts direkt aus dem ZIP-Fenster.
 3. Schließe OBS.
-4. Starte `Installieren.bat` und warte auf die Bestätigung.
+4. Starte im entpackten Ordner `GVL Media Studio.exe` und warte auf die Bestätigung.
 5. Öffne OBS und schalte im Menü **Docks** den Eintrag **GVL Media Studio** ein.
 
 Das Panel ist jetzt da, und die Quelle `GVL Broadcast Overlay` liegt in deinen Szenen. Das Programm startet und beendet sich ab jetzt automatisch mit OBS.
@@ -85,11 +85,11 @@ Das Panel ist jetzt da, und die Quelle `GVL Broadcast Overlay` liegt in deinen S
 
 ### Aktualisieren
 
-OBS schließen, die neue ZIP entpacken und `Installieren.bat` erneut starten. Einstellungen und Stream-Plan bleiben erhalten.
+OBS schließen, die neue ZIP entpacken, dort `GVL Media Studio.exe` starten und bei der Frage **Ja** wählen. Einstellungen und Stream-Plan bleiben erhalten.
 
 ### Deinstallieren
 
-OBS schließen und `Deinstallieren.bat` starten. Deine Einstellungen liegen in `%APPDATA%\GVLMediaStudio`. Diesen Ordner kannst du bei Bedarf selbst löschen.
+OBS schließen, im entpackten Ordner `GVL Media Studio.exe` starten und bei der Frage **Nein** wählen. Deine Einstellungen liegen in `%APPDATA%\GVLMediaStudio`. Diesen Ordner kannst du bei Bedarf selbst löschen.
 
 ## Mit einem Spiel verbinden
 
@@ -132,7 +132,7 @@ Der Puffer braucht zusätzliche CPU-Leistung. Schalte ihn nur beim Streamen ein.
 | Problem | Lösung |
 |---|---|
 | Panel fehlt in OBS | Menü **Docks** öffnen und **GVL Media Studio** einschalten |
-| „Datei nicht gefunden“ im Panel | OBS schließen, aktuelle ZIP laden, entpacken und `Installieren.bat` erneut starten |
+| „Datei nicht gefunden“ im Panel | OBS schließen, aktuelle ZIP laden, entpacken und dort `GVL Media Studio.exe` starten |
 | „Dienst nicht erreichbar“ | OBS neu starten |
 | Grafiken erscheinen nicht | Prüfen, ob `GVL Broadcast Overlay` in der Szene oben liegt und sichtbar ist |
 | Media-Fenster fehlt im Spiel | Du musst im Team `Media` sein |

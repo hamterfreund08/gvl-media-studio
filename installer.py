@@ -34,6 +34,9 @@ STOP_WAIT = 5
 COPY_ATTEMPTS = 6
 COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
+MB_YESNOCANCEL_QUESTION = 0x23
+ANSWER_YES = 6
+ANSWER_NO = 7
 
 
 def message(text, icon=MB_ICONINFO):
@@ -198,7 +201,7 @@ def copy_file(source, target):
 def copy_program(source):
     for attempt in range(1, COPY_ATTEMPTS + 1):
         try:
-            shutil.copytree(source, TARGET, ignore=shutil.ignore_patterns("*.bat"), copy_function=copy_file, dirs_exist_ok=True)
+            shutil.copytree(source, TARGET, copy_function=copy_file, dirs_exist_ok=True)
             return
         except OSError:
             if attempt == COPY_ATTEMPTS:
@@ -236,6 +239,24 @@ def uninstall():
     for folder in (USER_TARGET, SHARED_TARGET):
         shutil.rmtree(folder, onexc=force_delete)
     message("GVL Media Studio wurde entfernt.")
+
+
+def started_from_package():
+    folder = os.path.normcase(os.path.dirname(os.path.abspath(sys.executable)))
+    installed = {os.path.normcase(USER_TARGET), os.path.normcase(SHARED_TARGET)}
+    return getattr(sys, "frozen", False) and len(sys.argv) == 1 and folder not in installed
+
+
+def choose():
+    if not os.path.isfile(os.path.join(TARGET, REQUIRED_FILES[0])):
+        run(install)
+        return
+    text = "GVL Media Studio ist schon installiert.\n\nJa: installieren oder aktualisieren\nNein: entfernen\nAbbrechen: nichts tun"
+    answer = ctypes.windll.user32.MessageBoxW(None, text, TITLE, MB_YESNOCANCEL_QUESTION)
+    if answer == ANSWER_YES:
+        run(install)
+    elif answer == ANSWER_NO:
+        run(uninstall)
 
 
 def run(action):

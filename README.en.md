@@ -76,7 +76,7 @@ You do not need Python or any other software for normal use.
 1. Download the latest [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip).
 2. Extract the whole ZIP into a folder. Do not run anything from inside the ZIP window.
 3. Close OBS.
-4. Run `Installieren.bat` and wait for the confirmation.
+4. Run `GVL Media Studio.exe` in the extracted folder and wait for the confirmation.
 5. Open OBS and enable **GVL Media Studio** in the **Docks** menu.
 
 The panel is now available and the `GVL Broadcast Overlay` source is in your scenes. From now on the program starts and stops together with OBS.
@@ -85,11 +85,11 @@ The panel is now available and the `GVL Broadcast Overlay` source is in your sce
 
 ### Updating
 
-Close OBS, extract the new ZIP and run `Installieren.bat` again. Your settings and stream plan are kept.
+Close OBS, extract the new ZIP, run `GVL Media Studio.exe` there and answer **Yes** to the question. Your settings and stream plan are kept.
 
 ### Uninstalling
 
-Close OBS and run `Deinstallieren.bat`. Your settings are stored in `%APPDATA%\GVLMediaStudio`, and you can delete that folder yourself if you want to.
+Close OBS, run `GVL Media Studio.exe` in the extracted folder and answer **No** to the question. Your settings are stored in `%APPDATA%\GVLMediaStudio`, and you can delete that folder yourself if you want to.
 
 ## Connecting to a match
 
@@ -132,7 +132,7 @@ The buffer uses extra CPU, so only turn it on while streaming. Use **Choose fold
 | Problem | Solution |
 |---|---|
 | Panel is missing in OBS | Open the **Docks** menu and enable **GVL Media Studio** |
-| "File not found" in the panel | Close OBS, download the latest ZIP, extract it and run `Installieren.bat` again |
+| "File not found" in the panel | Close OBS, download the latest ZIP, extract it and run `GVL Media Studio.exe` there |
 | "Service not reachable" | Restart OBS |
 | Graphics do not appear | Check that `GVL Broadcast Overlay` is at the top of the scene and visible |
 | Media window missing in the game | You must be on the `Media` team |

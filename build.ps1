@@ -12,6 +12,6 @@ Push-Location $root
 & "$venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --noconsole --onedir --name "GVL Media Studio" --hidden-import installer --add-data "$root\web;web" --add-binary "$root\cloudflared.exe;." --distpath "$root\dist" --workpath "$root\build" --specpath "$root\build" "$root\media_studio.py"
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller ist fehlgeschlagen" }
 $app = Join-Path $root "dist\GVL Media Studio"
-Copy-Item obs\gvl_media_studio.lua, obs\loader.html, Installieren.bat, Deinstallieren.bat, THIRD_PARTY_NOTICES.md $app
+Copy-Item obs\gvl_media_studio.lua, obs\loader.html, THIRD_PARTY_NOTICES.md $app
 & "$venv\Scripts\python.exe" -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', sys.argv[2])" (Join-Path $root "dist\GVL-Media-Studio") $app
 Pop-Location

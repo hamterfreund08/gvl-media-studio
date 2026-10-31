@@ -36,7 +36,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.8.2"
+VERSION = "1.8.3"
 HOST = "127.0.0.1"
 PORT = 50231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
@@ -779,5 +779,7 @@ def main():
 if __name__ == "__main__":
     if "--install" in sys.argv or "--uninstall" in sys.argv:
         installer.run(installer.install if "--install" in sys.argv else installer.uninstall)
+    elif installer.started_from_package():
+        installer.choose()
     else:
         main()

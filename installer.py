@@ -270,7 +270,8 @@ def run(action):
     try:
         action()
     except shutil.Error as e:
-        path = e.args[0][0][1]
-        message(f"Einrichtung fehlgeschlagen.\n\nDiese Datei liess sich nicht ersetzen:\n{path}\n\nOBS schliessen, den Ordner {TARGET} von Hand loeschen und die Installation erneut starten. Blockiert der Virenschutz die Datei, den Ordner dort als Ausnahme eintragen.", MB_ICONERROR)
+        failed = e.args[0]
+        names = "\n".join(os.path.basename(item[1]) for item in failed[:5])
+        message(f"Einrichtung fehlgeschlagen.\n\nDiese Dateien liessen sich nicht kopieren ({len(failed)}):\n{names}\n\nGrund: {failed[0][2]}\n\nDen Ordner zu loeschen hilft hier nicht. Meist blockiert der Virenschutz die Datei. Dort die Datei aus der Quarantaene holen und diesen Ordner als Ausnahme eintragen:\n{TARGET}\n\nDanach dieses Programm erneut starten.", MB_ICONERROR)
     except (OSError, ValueError) as e:
         message(f"Einrichtung fehlgeschlagen:\n{e}", MB_ICONERROR)

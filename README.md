@@ -71,7 +71,9 @@ Python oder andere Programme musst du für die normale Nutzung nicht installiere
 
 ## Installation
 
-1. Lade die aktuelle `GVL-Media-Studio.zip` unter [Releases](../../releases/latest) herunter.
+> **Wichtig:** Lade **nicht** den grünen **Code**-Knopf herunter. Darin fehlt das Programm. Du brauchst die Datei `GVL-Media-Studio.zip` aus den Releases.
+
+1. Lade die aktuelle [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip) herunter.
 2. Entpacke die ZIP komplett in einen Ordner. Starte nichts direkt aus dem ZIP-Fenster.
 3. Schließe OBS.
 4. Starte `Installieren.bat` und warte auf die Bestätigung.

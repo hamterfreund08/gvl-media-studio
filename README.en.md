@@ -132,6 +132,7 @@ The buffer uses extra CPU, so only turn it on while streaming. Use **Choose fold
 | Problem | Solution |
 |---|---|
 | Panel is missing in OBS | Open the **Docks** menu and enable **GVL Media Studio** |
+| "File not found" in the panel | Close OBS, download the latest ZIP, extract it and run `Installieren.bat` again |
 | "Service not reachable" | Restart OBS |
 | Graphics do not appear | Check that `GVL Broadcast Overlay` is at the top of the scene and visible |
 | Media window missing in the game | You must be on the `Media` team |

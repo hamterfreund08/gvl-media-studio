@@ -132,6 +132,7 @@ Der Puffer braucht zusätzliche CPU-Leistung. Schalte ihn nur beim Streamen ein.
 | Problem | Lösung |
 |---|---|
 | Panel fehlt in OBS | Menü **Docks** öffnen und **GVL Media Studio** einschalten |
+| „Datei nicht gefunden“ im Panel | OBS schließen, aktuelle ZIP laden, entpacken und `Installieren.bat` erneut starten |
 | „Dienst nicht erreichbar“ | OBS neu starten |
 | Grafiken erscheinen nicht | Prüfen, ob `GVL Broadcast Overlay` in der Szene oben liegt und sichtbar ist |
 | Media-Fenster fehlt im Spiel | Du musst im Team `Media` sein |

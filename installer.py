@@ -2,6 +2,9 @@
 
 Kopiert das Programm nach %LOCALAPPDATA%\\GVLMediaStudio, traegt das Dock in die OBS-Einstellungen ein und
 meldet das Lua-Skript in allen Szenensammlungen an. OBS muss dafuer geschlossen sein.
+
+Das Lua-Skript kann Pfade mit Sonderzeichen nicht oeffnen. Enthaelt der Benutzerpfad welche, zum Beispiel
+einen Umlaut im Windows-Namen, wird stattdessen nach %PROGRAMDATA%\\GVLMediaStudio installiert.
 """
 import ctypes
 import json
@@ -10,16 +13,24 @@ import shutil
 import sys
 import time
 from ctypes import wintypes
+from pathlib import Path
 
 TITLE = "GVL Media Studio"
 DOCK_UUID = "6f1d3a52-7c0e-4b1e-9a55-0c5a9f2e1b77"
-TARGET = os.path.join(os.environ["LOCALAPPDATA"], "GVLMediaStudio")
+USER_TARGET = os.path.join(os.environ["LOCALAPPDATA"], "GVLMediaStudio")
+SHARED_TARGET = os.path.join(os.environ.get("PROGRAMDATA", r"C:\ProgramData"), "GVLMediaStudio")
+TARGET = USER_TARGET if USER_TARGET.isascii() else SHARED_TARGET
 OBS_DIR = os.path.join(os.environ["APPDATA"], "obs-studio")
 SCRIPT = "gvl_media_studio.lua"
 MB_ICONERROR = 0x10
 MB_ICONINFO = 0x40
 SNAPSHOT_PROCESSES = 0x2
 REPLAY_SECONDS = 30
+SERVICE_EXE = "gvl media studio.exe"
+TUNNEL_EXE = "cloudflared.exe"
+PROCESS_TERMINATE = 0x1
+STOP_WAIT = 5
+REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
 
 
 def message(text, icon=MB_ICONINFO):
@@ -33,7 +44,7 @@ class ProcessEntry(ctypes.Structure):
                 ("szExeFile", wintypes.WCHAR * 260)]
 
 
-def obs_running():
+def process_list():
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
     kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
@@ -43,13 +54,37 @@ def obs_running():
     snapshot = kernel.CreateToolhelp32Snapshot(SNAPSHOT_PROCESSES, 0)
     entry = ProcessEntry()
     entry.dwSize = ctypes.sizeof(ProcessEntry)
-    found = False
+    found = []
     more = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
-    while more and not found:
-        found = entry.szExeFile.lower() == "obs64.exe"
+    while more:
+        found.append((entry.th32ProcessID, entry.th32ParentProcessID, entry.szExeFile.lower()))
         more = kernel.Process32NextW(snapshot, ctypes.byref(entry))
     kernel.CloseHandle(snapshot)
     return found
+
+
+def obs_running():
+    return any(name == "obs64.exe" for _, _, name in process_list())
+
+
+def stop_service():
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    me = os.getpid()
+    processes = process_list()
+    services = {pid for pid, _, name in processes if name == SERVICE_EXE.lower() and pid != me}
+    tunnels = {pid for pid, parent, name in processes if name == TUNNEL_EXE and parent in services}
+    for pid in services | tunnels:
+        handle = kernel.OpenProcess(PROCESS_TERMINATE, False, pid)
+        if handle:
+            kernel.TerminateProcess(handle, 0)
+            kernel.CloseHandle(handle)
+    end = time.time() + STOP_WAIT
+    while time.time() < end and services & {pid for pid, _, _ in process_list()}:
+        time.sleep(0.2)
 
 
 def read_text(path):
@@ -141,9 +176,14 @@ def other_docks(docks):
 def install():
     source = os.path.dirname(os.path.abspath(sys.executable))
     if os.path.normcase(source) != os.path.normcase(TARGET):
-        shutil.rmtree(TARGET, ignore_errors=True)
-        shutil.copytree(source, TARGET)
-    dock = {"title": TITLE, "url": "file:///" + os.path.join(TARGET, "loader.html").replace("\\", "/"), "uuid": DOCK_UUID}
+        stop_service()
+        for folder in (USER_TARGET, SHARED_TARGET):
+            shutil.rmtree(folder, ignore_errors=True)
+        shutil.copytree(source, TARGET, dirs_exist_ok=True)
+    missing = [name for name in REQUIRED_FILES if not os.path.isfile(os.path.join(TARGET, name))]
+    if missing:
+        raise OSError(f"Dateien fehlen in {TARGET}: {', '.join(missing)}. Der Virenschutz hat sie eventuell entfernt.")
+    dock = {"title": TITLE, "url": Path(TARGET, "loader.html").as_uri(), "uuid": DOCK_UUID}
     script = {"path": os.path.join(TARGET, SCRIPT).replace("\\", "/"), "settings": {}}
     for path in config_files():
         set_docks(path, lambda docks: other_docks(docks) + [dock])
@@ -154,12 +194,14 @@ def install():
 
 
 def uninstall():
+    stop_service()
     for path in config_files():
         set_docks(path, other_docks)
     for path in scene_files():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))])
     set_replay_buffer(False)
-    shutil.rmtree(TARGET, ignore_errors=True)
+    for folder in (USER_TARGET, SHARED_TARGET):
+        shutil.rmtree(folder, ignore_errors=True)
     message("GVL Media Studio wurde entfernt.")
 
 

@@ -1,0 +1,9 @@
+cloudflared.exe
+build/
+dist/
+__pycache__/
+*.pyc
+ready.txt
+replay_cmd.txt
+replay_events.txt
+*.log

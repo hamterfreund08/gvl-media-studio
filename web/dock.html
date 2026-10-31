@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GVL Media Studio</title>
+<style>
+@font-face { font-family: Montserrat; src: url(/media/assets/montserrat.ttf); font-weight: 100 900; }
+:root { --bg: #1b1c20; --panel: #26272d; --line: #383a42; --text: #eceef2; --muted: #9a9dab; --accent: #d20515; --ok: #16a34a; --warn: #d9a406; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font: 600 13px Montserrat, "Segoe UI", sans-serif; min-height: 100%; }
+body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+button { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; cursor: pointer; padding: 9px 8px; transition: background .12s, border-color .12s; }
+button:hover:not(:disabled) { background: #33353d; border-color: #565967; }
+button:disabled { opacity: .36; cursor: default; }
+button.on, button.on:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+h2 { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; }
+.top { display: flex; align-items: center; gap: 10px; }
+.top img { width: 36px; height: 36px; object-fit: contain; }
+.top b { font-size: 15px; font-weight: 900; }
+.pill { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.pill.ok i { background: var(--ok); } .pill.warn i { background: var(--warn); }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.tabs button { font-weight: 800; }
+.tabs button.active { background: var(--text); border-color: var(--text); color: var(--bg); }
+.primary, .clear { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 800; padding: 11px; }
+.primary:hover:not(:disabled), .clear:hover:not(:disabled) { background: #ae0411; }
+.hint { color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; }
+.link { width: 100%; font: 500 12px Consolas, monospace; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+.steps { color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.5; padding-left: 18px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.match { display: grid; grid-template-columns: 34px 1fr auto 1fr 34px; align-items: center; gap: 8px; }
+.match img { width: 34px; height: 34px; object-fit: contain; }
+.match .n { font-size: 12px; font-weight: 800; line-height: 1.15; overflow: hidden; }
+.match .a { text-align: right; }
+.match .s { font-size: 20px; font-weight: 900; white-space: nowrap; }
+.meta { color: var(--muted); font-size: 12px; font-weight: 500; text-align: center; }
+select, input[type=text], input[type=number] { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.row label { flex: 1; font-weight: 600; }
+.switch { position: relative; width: 36px; height: 20px; flex: none; }
+.switch input { opacity: 0; width: 100%; height: 100%; position: absolute; cursor: pointer; margin: 0; }
+.switch span { position: absolute; inset: 0; background: var(--line); border-radius: 10px; pointer-events: none; transition: background .12s; }
+.switch span::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .12s; }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(16px); }
+.log { display: flex; flex-direction: column; gap: 4px; }
+.log button { display: flex; justify-content: space-between; gap: 8px; text-align: left; padding: 6px 8px; font-size: 12px; }
+.log span:last-child { color: var(--muted); white-space: nowrap; }
+.bar { display: flex; align-items: center; gap: 8px; }
+.bar .pill { margin-left: 0; }
+.lang { margin-left: auto; display: flex; gap: 3px; }
+.lang button { padding: 3px 8px; font-size: 11px; font-weight: 800; }
+.lang button.active { background: var(--text); border-color: var(--text); color: var(--bg); }
+.path { font: 500 12px Consolas, monospace; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px; overflow-wrap: anywhere; }
+.clip { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; align-items: center; }
+.clip span { font-size: 12px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.clip button { padding: 5px 7px; font-size: 11px; }
+.empty { color: var(--muted); font-size: 12px; font-weight: 500; }
+.games { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+.game { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; padding: 7px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.game.chosen { border-color: var(--accent); }
+.game input { margin-top: 2px; accent-color: var(--accent); cursor: pointer; }
+.game b { display: block; font-size: 12px; font-weight: 800; line-height: 1.25; }
+.game small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 500; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="top"><img src="/media/assets/gvl_logo.png" alt=""><b>Media Studio</b></div>
+<div class="bar"><div class="pill" id="pill"><i></i><span id="pillText">Startet</span></div><div class="lang"><button data-lang="de">DE</button><button data-lang="en">EN</button></div></div>
+
+<button class="clear" id="clearAll">Alles ausblenden</button>
+
+<div class="tabs">
+  <button data-tab="stream" class="active">Stream</button>
+  <button data-tab="match">Match</button>
+  <button data-tab="plan">Plan</button>
+</div>
+
+<div data-page="stream">
+  <section>
+    <h2>Bildschirme</h2>
+    <button data-full="starting" id="startingBtn">Stream Starting Soon</button>
+    <div class="row">
+      <label for="countdown">Countdown</label>
+      <select id="countdown" style="width:170px">
+        <option value="0">Bis zum Anstoß</option>
+        <option value="5">5 Minuten</option>
+        <option value="10">10 Minuten</option>
+        <option value="15">15 Minuten</option>
+        <option value="30">30 Minuten</option>
+      </select>
+    </div>
+    <div class="two">
+      <button data-full="brb">Gleich zurück</button>
+      <button data-full="ending">Stream-Ende</button>
+    </div>
+    <button data-full="plan" id="planBtn">Stream-Plan zeigen</button>
+  </section>
+</div>
+
+<div data-page="stream" style="display:contents">
+  <section>
+    <h2>Video-Replay (OBS)</h2>
+    <button id="bufferBtn">Replay-Puffer starten</button>
+    <button class="primary" id="clipBtn">Clip speichern (letzte 30 Sek.)</button>
+    <div class="row"><label for="autoClip">Tore automatisch sichern</label><div class="switch"><input type="checkbox" id="autoClip"><span></span></div></div>
+    <div class="path" id="replayDir"></div>
+    <div class="two">
+      <button id="pickFolder">Ordner wählen</button>
+      <button id="openFolder">Ordner öffnen</button>
+    </div>
+    <div class="log" id="clips"></div>
+  </section>
+
+  <section>
+    <h2>Kommentatoren</h2>
+    <input type="text" id="voice1" maxlength="40" placeholder="Name 1" aria-label="Kommentator 1">
+    <input type="text" id="voice2" maxlength="40" placeholder="Name 2 (optional)" aria-label="Kommentator 2">
+    <button data-lower="commentators" id="voiceBtn">Einblenden</button>
+  </section>
+
+  <section>
+    <h2>Eigene Bauchbinde</h2>
+    <input type="text" id="customTitle" maxlength="48" placeholder="Titel" aria-label="Titel">
+    <input type="text" id="customSub" maxlength="70" placeholder="Untertitel (optional)" aria-label="Untertitel">
+    <button id="customBtn">Einblenden</button>
+  </section>
+
+  <section>
+    <h2>Laufband</h2>
+    <input type="text" id="tickerText" maxlength="200" placeholder="Text im Laufband" aria-label="Laufband-Text">
+    <button id="tickerBtn">Laufband an</button>
+  </section>
+</div>
+
+<div data-page="match" hidden style="display:contents">
+  <section id="tunnel">
+    <h2>Verbindung</h2>
+    <div id="tunnelOff" style="display:flex;flex-direction:column;gap:8px">
+      <button class="primary" id="startTunnel">Verbindung starten</button>
+      <div class="hint" id="tunnelMessage">Erstellt einen Cloudflare-Link für dieses Spiel.</div>
+    </div>
+    <div class="hint" id="tunnelStarting" hidden>Cloudflare-Link wird erstellt ...</div>
+    <div id="tunnelReady" hidden style="display:flex;flex-direction:column;gap:8px">
+      <input class="link" id="tunnelLink" readonly aria-label="Verbindungslink">
+      <button class="primary" id="copyLink">Link kopieren</button>
+      <ol class="steps"><li>Im Spiel ins Media Team gehen.</li><li>Link einfügen und auf Connect klicken.</li></ol>
+      <button id="stopTunnel">Tunnel beenden</button>
+    </div>
+  </section>
+
+  <div id="linked" hidden style="display:contents">
+    <section>
+      <div class="match">
+        <img id="homeLogo" alt=""><div class="n" id="homeName"></div><div class="s" id="score"></div><div class="n a" id="awayName"></div><img id="awayLogo" alt="">
+      </div>
+      <div class="meta" id="meta"></div>
+    </section>
+
+    <section>
+      <h2>Vollbild</h2>
+      <div class="two">
+        <button data-full="preview">Match-Vorschau</button>
+        <button data-full="table" id="tableBtn">Tabelle</button>
+        <button data-full="lineup" data-side="home" id="lineHome">Aufstellung Heim</button>
+        <button data-full="lineup" data-side="away" id="lineAway">Aufstellung Gast</button>
+        <button data-full="result">Spielstand</button>
+        <button data-full="fixtures" id="fixturesBtn">Spieltag</button>
+        <button data-full="top" id="topBtn">Torjäger</button>
+      </div>
+      <select id="fullSeconds" aria-label="Anzeigedauer">
+        <option value="0">Bleibt stehen, bis ausgeblendet</option>
+        <option value="15">15 Sekunden</option>
+        <option value="30">30 Sekunden</option>
+        <option value="60">60 Sekunden</option>
+      </select>
+    </section>
+
+    <section>
+      <h2>Replay (nur auf deinem Bildschirm)</h2>
+      <div class="two" style="grid-template-columns:repeat(3,1fr)">
+        <button data-replay="10">10 Sek.</button>
+        <button data-replay="20">20 Sek.</button>
+        <button data-replay="30">30 Sek.</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Unten</h2>
+      <div class="two">
+        <button data-lower="bar">Match-Leiste</button>
+        <button data-lower="officials">Schiedsrichter</button>
+        <button data-lower="manager" data-team="home">Trainer Heim</button>
+        <button data-lower="manager" data-team="away">Trainer Gast</button>
+      </div>
+      <div class="two">
+        <button data-ticker="home" id="tickerHome">Laufband Heim</button>
+        <button data-ticker="away" id="tickerAway">Laufband Gast</button>
+      </div>
+      <select id="playerSelect" aria-label="Spieler"></select>
+      <div class="two">
+        <button id="playerBtn">Spieler zeigen</button>
+        <button id="motmBtn">Man of the Match</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Automatisch einblenden</h2>
+      <div class="row"><label for="autoGoal">Tore</label><div class="switch"><input type="checkbox" id="autoGoal" data-auto="goal"><span></span></div></div>
+      <div class="row"><label for="autoCard">Karten</label><div class="switch"><input type="checkbox" id="autoCard" data-auto="card"><span></span></div></div>
+      <div class="row"><label for="autoSub">Wechsel</label><div class="switch"><input type="checkbox" id="autoSub" data-auto="sub"><span></span></div></div>
+    </section>
+
+    <section>
+      <h2>Ereignisse</h2>
+      <div class="log" id="log"></div>
+    </section>
+
+    <button id="unlink">Verbindung trennen</button>
+  </div>
+</div>
+
+<div data-page="plan" hidden style="display:contents">
+  <section>
+    <h2>Dein Stream-Plan</h2>
+    <div class="hint" id="planSummary" style="text-align:left"></div>
+    <select id="planFilter" aria-label="Wettbewerb"></select>
+    <div class="games" id="games"><div class="empty">Spiele werden geladen ...</div></div>
+    <button id="reloadGames">Spielplan aktualisieren</button>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const EN = {
+  "Startet": "Starting", "Alles ausblenden": "Hide everything", "Bildschirme": "Screens", "Bis zum Anstoß": "Until kick-off",
+  "5 Minuten": "5 minutes", "10 Minuten": "10 minutes", "15 Minuten": "15 minutes", "30 Minuten": "30 minutes",
+  "Gleich zurück": "Be right back", "Stream-Ende": "Stream ending", "Stream-Plan zeigen": "Show stream plan",
+  "Video-Replay (OBS)": "Video replay (OBS)", "Replay-Puffer starten": "Start replay buffer", "Replay-Puffer stoppen": "Stop replay buffer",
+  "Clip speichern (letzte 30 Sek.)": "Save clip (last 30 sec)", "Tore automatisch sichern": "Save goals automatically",
+  "Ordner wählen": "Choose folder", "Ordner öffnen": "Open folder", "Kommentatoren": "Commentators", "Name 2 (optional)": "Name 2 (optional)",
+  "Kommentator 1": "Commentator 1", "Kommentator 2": "Commentator 2", "Einblenden": "Show", "Eigene Bauchbinde": "Custom lower third",
+  "Titel": "Title", "Untertitel (optional)": "Subtitle (optional)", "Untertitel": "Subtitle", "Laufband": "Ticker",
+  "Text im Laufband": "Ticker text", "Laufband-Text": "Ticker text", "Laufband an": "Ticker on", "Laufband aus": "Ticker off",
+  "Verbindung": "Connection", "Verbindung starten": "Start connection", "Erstellt einen Cloudflare-Link für dieses Spiel.": "Creates a Cloudflare link for this match.",
+  "Cloudflare-Link wird erstellt ...": "Creating Cloudflare link ...", "Verbindungslink": "Connection link", "Link kopieren": "Copy link", "Kopiert": "Copied",
+  "Im Spiel ins Media Team gehen.": "Join the Media team in the game.", "Link einfügen und auf Connect klicken.": "Paste the link and click Connect.",
+  "Tunnel beenden": "Stop tunnel", "Vollbild": "Full screen", "Match-Vorschau": "Match preview", "Tabelle": "Table",
+  "Aufstellung Heim": "Lineup home", "Aufstellung Gast": "Lineup away", "Spielstand": "Score", "Spieltag": "Matchday", "Torjäger": "Top scorers",
+  "Anzeigedauer": "Display time", "Bleibt stehen, bis ausgeblendet": "Stays until hidden", "15 Sekunden": "15 seconds", "30 Sekunden": "30 seconds", "60 Sekunden": "60 seconds",
+  "Replay (nur auf deinem Bildschirm)": "Replay (only on your screen)", "10 Sek.": "10 sec", "20 Sek.": "20 sec", "30 Sek.": "30 sec",
+  "Unten": "Lower thirds", "Match-Leiste": "Match bar", "Schiedsrichter": "Officials", "Trainer Heim": "Manager home", "Trainer Gast": "Manager away",
+  "Laufband Heim": "Ticker home", "Laufband Gast": "Ticker away", "Spieler": "Player", "Spieler zeigen": "Show player",
+  "Automatisch einblenden": "Show automatically", "Tore": "Goals", "Karten": "Cards", "Wechsel": "Substitutions", "Ereignisse": "Events",
+  "Verbindung trennen": "Disconnect", "Dein Stream-Plan": "Your stream plan", "Wettbewerb": "Competition", "Spiele werden geladen ...": "Loading matches ...",
+  "Spielplan aktualisieren": "Refresh schedule", "Tor": "Goal", "Karte": "Card", "1. Halbzeit": "1st half", "Halbzeitpause": "Half time", "2. Halbzeit": "2nd half",
+  "Verlängerung": "Extra time", "Elfmeterschießen": "Penalties", "Abpfiff": "Full time", "Wertung": "Forfeit", "Beendet": "Finished",
+  "Nicht verbunden": "Not connected", "Spiel antwortet nicht": "Game not responding", "Verbunden": "Connected", "Dienst nicht erreichbar": "Service not reachable",
+  "Der Spielplan kommt mit der ersten Verbindung zum Spiel.": "The schedule arrives with the first connection to the game.",
+  "Noch keine Aufstellung": "No lineup yet", "Noch nichts passiert.": "Nothing happened yet.", "Keine kommenden Spiele gefunden.": "No upcoming matches found.",
+  "Spiel": "match", "Spiele": "matches", "ausgewählt.": "selected.", "Nächstes:": "Next:", "Wähle die Spiele aus, die du streamst.": "Choose the matches you are streaming.",
+  "Noch keine Clips gespeichert.": "No clips saved yet.", "Zeitlupe": "Slow motion", "Alle Wettbewerbe": "All competitions", "Videos-Ordner": "Videos folder",
+  "Der Tunnel wurde beendet. Bitte neu starten.": "The tunnel stopped. Please start it again.", "cloudflared.exe fehlt. Bitte neu installieren.": "cloudflared.exe is missing. Please reinstall.",
+  "Cloudflare hat nicht geantwortet. Bitte erneut versuchen.": "Cloudflare did not respond. Please try again.",
+};
+const originalText = new WeakMap();
+let language = "de";
+function t(text) { return language === "en" ? (EN[text] || text) : text; }
+function translatePage() {
+  document.documentElement.lang = language;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (["SCRIPT", "STYLE"].includes(node.parentNode.tagName) || !node.nodeValue.trim()) continue;
+    if (!originalText.has(node)) originalText.set(node, node.nodeValue);
+    const original = originalText.get(node);
+    const key = original.trim();
+    if (key in EN) node.nodeValue = original.replace(key, t(key));
+  }
+  document.querySelectorAll("[placeholder], [aria-label]").forEach(element => {
+    for (const attribute of ["placeholder", "aria-label"]) {
+      if (!element.hasAttribute(attribute)) continue;
+      const stored = `de${attribute}`.replace("-", "");
+      if (!element.dataset[stored]) element.dataset[stored] = element.getAttribute(attribute);
+      element.setAttribute(attribute, t(element.dataset[stored]));
+    }
+  });
+  document.querySelectorAll("[data-lang]").forEach(button => button.classList.toggle("active", button.dataset.lang === language));
+  if ($("planFilter").options.length) $("planFilter").options[0].textContent = t("Alle Wettbewerbe");
+}
+function setLanguage(next) {
+  if (next === language) return;
+  language = next;
+  translatePage();
+}
+const EVENT_NAMES = { goal: "Tor", card: "Karte", sub: "Wechsel" };
+const LOWER_EVENTS = ["goal", "card", "sub"];
+const STATUS_TEXT = { "Halftime 1": "1. Halbzeit", "Break": "Halbzeitpause", "Halftime 2": "2. Halbzeit", "Extra Time": "Verlängerung", "Penalty": "Elfmeterschießen", "FT": "Abpfiff", "FFT": "Wertung", "GameFinishedRef": "Beendet" };
+const SAVE_DELAY = 400;
+let match = null;
+let assets = { logos: {}, avatars: {} };
+let visible = { full: null, lower: null, ticker: null };
+let events = [];
+let leagueKey = null;
+let settings = { plan: [], commentators: ["", ""], ticker: "" };
+let plan = [];
+let games = [];
+let saveTimer = null;
+let version = null;
+let buffer = false;
+let dataStamp = 0;
+
+async function post(path, body) {
+  const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return response.json();
+}
+function send(body) { return post("/media/command", body); }
+function saveSettings(values) {
+  Object.assign(settings, values);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => send({ action: "settings", values }), SAVE_DELAY);
+}
+
+function pill(kind, text) {
+  $("pill").className = "pill " + kind;
+  $("pillText").textContent = text;
+}
+function logo(team) {
+  return (assets.logos || {})[String(team.logo || "").replace(/\D/g, "")] || "/media/assets/gvl_logo.png";
+}
+function lineupOf(team) {
+  const lineup = team.lineup || {};
+  return (lineup.field && lineup.field.length ? lineup.field : lineup.starters) || [];
+}
+
+function renderTunnel(tunnel) {
+  $("tunnelOff").hidden = tunnel.state !== "off";
+  $("tunnelStarting").hidden = tunnel.state !== "starting";
+  $("tunnelReady").hidden = tunnel.state !== "ready";
+  $("tunnelLink").value = tunnel.link;
+  $("tunnelMessage").textContent = t(tunnel.message || "Erstellt einen Cloudflare-Link für dieses Spiel.");
+}
+
+function renderStatus(status) {
+  const linked = status.linked && match;
+  $("linked").hidden = !linked;
+  $("tunnel").hidden = !!linked;
+  if (!status.linked) pill("", t("Nicht verbunden"));
+  else if (status.stale) pill("warn", t("Spiel antwortet nicht"));
+  else pill("ok", t("Verbunden"));
+}
+
+async function loadAvailability() {
+  const key = `${match.league}|${match.date}|${dataStamp}`;
+  if (key === leagueKey) return;
+  leagueKey = key;
+  const data = await (await fetch("/media/league")).json();
+  $("tableBtn").disabled = !data.table.length;
+  $("fixturesBtn").disabled = !data.fixtures.length;
+  $("topBtn").disabled = !data.top.length;
+}
+
+function renderMatch() {
+  if (!match) return;
+  loadAvailability().catch(e => { leagueKey = null; console.warn(e); });
+  $("homeName").textContent = match.home.name;
+  $("awayName").textContent = match.away.name;
+  $("homeLogo").src = logo(match.home);
+  $("awayLogo").src = logo(match.away);
+  $("score").textContent = `${match.score.home} : ${match.score.away}`;
+  const parts = [match.league, STATUS_TEXT[match.status] && t(STATUS_TEXT[match.status]), `${match.minute}'`, match.stadium];
+  $("meta").textContent = parts.filter(Boolean).join("  |  ");
+  $("lineHome").disabled = !lineupOf(match.home).length;
+  $("lineAway").disabled = !lineupOf(match.away).length;
+  $("tickerHome").disabled = !lineupOf(match.home).length;
+  $("tickerAway").disabled = !lineupOf(match.away).length;
+  $("motmBtn").disabled = !match.motm;
+
+  const select = $("playerSelect");
+  const chosen = select.value;
+  const options = [];
+  for (const side of ["home", "away"]) {
+    for (const p of lineupOf(match[side])) {
+      options.push(`<option value="${side}|${p.name.replace(/"/g, "")}">${match[side].short || side}: ${p.name}</option>`);
+    }
+  }
+  const html = options.join("") || `<option value="">${t("Noch keine Aufstellung")}</option>`;
+  if (select.dataset.html !== html) {
+    select.innerHTML = html;
+    select.dataset.html = html;
+    select.value = chosen;
+    if (!select.value && select.options.length) select.selectedIndex = 0;
+  }
+  $("playerBtn").disabled = !options.length;
+}
+
+function eventLine(event) {
+  const team = event.team === "Home" ? match.home : match.away;
+  if (event.type === "goal") return `${event.scorer.name} (${team.short || team.name})`;
+  if (event.type === "card") return `${event.player.name} (${team.short || team.name})`;
+  return `${(event.in[0] || event.out[0] || {}).name || ""} (${team.short || team.name})`;
+}
+function renderLog() {
+  if (!match) return;
+  const list = events.filter(e => LOWER_EVENTS.includes(e.type)).slice(-5).reverse();
+  $("log").innerHTML = list.length ? "" : `<div class="empty">${t("Noch nichts passiert.")}</div>`;
+  list.forEach(event => {
+    const button = document.createElement("button");
+    const left = document.createElement("span");
+    const right = document.createElement("span");
+    left.textContent = `${t(EVENT_NAMES[event.type])}: ${eventLine(event)}`;
+    right.textContent = `${event.minute}'`;
+    button.append(left, right);
+    button.onclick = () => send({ action: "show", slot: "lower", graphic: { ...event, kind: event.type } });
+    $("log").append(button);
+  });
+}
+
+function renderButtons() {
+  document.querySelectorAll("[data-full]").forEach(b => {
+    const g = visible.full;
+    b.classList.toggle("on", !!g && g.kind === b.dataset.full && (!b.dataset.side || g.side === b.dataset.side));
+  });
+  document.querySelectorAll("[data-lower]").forEach(b => {
+    const g = visible.lower;
+    b.classList.toggle("on", !!g && g.kind === b.dataset.lower && (!b.dataset.team || g.team === b.dataset.team));
+  });
+  const textTicker = !!visible.ticker && visible.ticker.kind === "ticker";
+  $("tickerBtn").classList.toggle("on", textTicker);
+  $("tickerBtn").textContent = t(textTicker ? "Laufband aus" : "Laufband an");
+  document.querySelectorAll("[data-ticker]").forEach(b => {
+    b.classList.toggle("on", !!visible.ticker && visible.ticker.kind === "lineup" && visible.ticker.side === b.dataset.ticker);
+  });
+}
+
+function renderSettings() {
+  const inputs = [["voice1", settings.commentators[0]], ["voice2", settings.commentators[1]], ["tickerText", settings.ticker], ["customTitle", settings.title], ["customSub", settings.subtitle]];
+  inputs.forEach(([id, value]) => { if (document.activeElement !== $(id)) $(id).value = value || ""; });
+  $("voiceBtn").disabled = !settings.commentators.some(n => n.trim());
+  $("customBtn").disabled = !$("customTitle").value.trim();
+  $("planBtn").disabled = !plan.length;
+}
+
+function renderGames() {
+  const filter = $("planFilter").value;
+  const list = games.filter(g => !filter || g.competition === filter);
+  $("games").innerHTML = list.length ? "" : `<div class="empty">${t(games.length || filter ? "Keine kommenden Spiele gefunden." : "Der Spielplan kommt mit der ersten Verbindung zum Spiel.")}</div>`;
+  list.forEach(game => {
+    const row = document.createElement("label");
+    const box = document.createElement("input");
+    const text = document.createElement("div");
+    const title = document.createElement("b");
+    const info = document.createElement("small");
+    const chosen = settings.plan.includes(game.id);
+    row.className = "game" + (chosen ? " chosen" : "");
+    box.type = "checkbox";
+    box.checked = chosen;
+    title.textContent = `${game.home} : ${game.away}`;
+    info.textContent = `${game.date.slice(0, 5)}, ${game.time}  |  ${game.competition}`;
+    box.onchange = () => {
+      const next = box.checked ? [...settings.plan, game.id] : settings.plan.filter(id => id !== game.id);
+      send({ action: "settings", values: { plan: next } });
+      settings.plan = next;
+      renderGames();
+    };
+    text.append(title, info);
+    row.append(box, text);
+    $("games").append(row);
+  });
+  const count = settings.plan.length;
+  const next = plan[0];
+  $("planSummary").textContent = count ? `${count} ${t(count === 1 ? "Spiel" : "Spiele")} ${t("ausgewählt.")}${next ? ` ${t("Nächstes:")} ${next.home} : ${next.away}, ${next.time}` : ""}` : t("Wähle die Spiele aus, die du streamst.");
+}
+
+function renderReplay(clips) {
+  $("bufferBtn").textContent = t(buffer ? "Replay-Puffer stoppen" : "Replay-Puffer starten");
+  $("bufferBtn").classList.toggle("on", buffer);
+  $("clipBtn").disabled = !buffer;
+  $("replayDir").textContent = settings.replayDir || t("Videos-Ordner");
+  $("autoClip").checked = !!settings.autoClip;
+  $("clips").innerHTML = clips.length ? "" : `<div class="empty">${t("Noch keine Clips gespeichert.")}</div>`;
+  clips.forEach(clip => {
+    const row = document.createElement("div");
+    const label = document.createElement("span");
+    const normal = document.createElement("button");
+    const slow = document.createElement("button");
+    row.className = "clip";
+    label.textContent = clip.name.replace(/^Tor:/, `${t("Tor")}:`);
+    label.title = clip.time;
+    normal.textContent = "Normal";
+    slow.textContent = t("Zeitlupe");
+    normal.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 1, seconds: 0 } });
+    slow.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 0.5, seconds: 0 } });
+    row.append(label, normal, slow);
+    $("clips").append(row);
+  });
+}
+
+async function loadGames() {
+  games = await (await fetch("/media/schedule")).json();
+  const names = [...new Set(games.map(g => g.competition).filter(Boolean))].sort();
+  const current = $("planFilter").value;
+  $("planFilter").innerHTML = `<option value="">${t("Alle Wettbewerbe")}</option>` + names.map(n => `<option>${n.replace(/</g, "")}</option>`).join("");
+  $("planFilter").value = current;
+  renderGames();
+}
+
+function apply(message) {
+  if (message.visible) visible = message.visible;
+  if (message.auto) {
+    document.querySelectorAll("[data-auto]").forEach(input => { input.checked = !!message.auto[input.dataset.auto]; });
+  }
+  if (message.type !== "command") {
+    if (version && message.version !== version) location.reload();
+    version = message.version;
+    match = message.match;
+    assets = message.assets || assets;
+    events = message.events || [];
+    if (message.settings) settings = message.settings;
+    setLanguage(settings.language || "de");
+    plan = message.plan || [];
+    buffer = !!message.buffer;
+    if (message.dataStamp !== dataStamp) {
+      dataStamp = message.dataStamp;
+      loadGames().catch(e => console.warn(e));
+    }
+    renderReplay(message.clips || []);
+    renderTunnel(message.tunnel);
+    renderStatus(message.status);
+    renderMatch();
+    renderLog();
+    renderSettings();
+    renderGames();
+  }
+  renderButtons();
+}
+
+document.querySelectorAll("[data-tab]").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll("[data-tab]").forEach(t => t.classList.toggle("active", t === tab));
+    document.querySelectorAll("[data-page]").forEach(page => { page.hidden = page.dataset.page !== tab.dataset.tab; });
+  };
+});
+document.querySelectorAll("[data-full]").forEach(button => {
+  button.onclick = () => {
+    if (button.classList.contains("on")) return send({ action: "hide", slot: "full" });
+    const graphic = { kind: button.dataset.full, seconds: Number($("fullSeconds").value) };
+    if (button.dataset.side) graphic.side = button.dataset.side;
+    if (button.dataset.full === "starting") {
+      graphic.seconds = 0;
+      const minutes = Number($("countdown").value);
+      if (minutes) graphic.until = Date.now() + minutes * 60000;
+    }
+    send({ action: "show", slot: "full", graphic });
+  };
+});
+document.querySelectorAll("[data-lower]").forEach(button => {
+  button.onclick = () => {
+    if (button.classList.contains("on")) return send({ action: "hide", slot: "lower" });
+    const graphic = { kind: button.dataset.lower, seconds: button.dataset.lower === "bar" ? 0 : 9 };
+    if (button.dataset.team) graphic.team = button.dataset.team;
+    send({ action: "show", slot: "lower", graphic });
+  };
+});
+document.querySelectorAll("[data-auto]").forEach(input => {
+  input.onchange = () => send({ action: "auto", kind: input.dataset.auto, value: input.checked });
+});
+document.querySelectorAll("[data-replay]").forEach(button => {
+  button.onclick = () => send({ action: "replay", seconds: Number(button.dataset.replay) });
+});
+$("bufferBtn").onclick = () => send({ action: "buffer", value: !buffer });
+$("clipBtn").onclick = () => send({ action: "clip" });
+$("autoClip").onchange = () => send({ action: "settings", values: { autoClip: $("autoClip").checked } });
+$("pickFolder").onclick = () => send({ action: "pickFolder" });
+$("openFolder").onclick = () => send({ action: "openFolder" });
+document.querySelectorAll("[data-lang]").forEach(button => {
+  button.onclick = () => send({ action: "settings", values: { language: button.dataset.lang } });
+});
+$("voice1").oninput = $("voice2").oninput = () => {
+  saveSettings({ commentators: [$("voice1").value, $("voice2").value] });
+  $("voiceBtn").disabled = !$("voice1").value.trim() && !$("voice2").value.trim();
+};
+$("tickerText").oninput = () => saveSettings({ ticker: $("tickerText").value });
+$("customTitle").oninput = () => {
+  saveSettings({ title: $("customTitle").value });
+  $("customBtn").disabled = !$("customTitle").value.trim();
+};
+$("customSub").oninput = () => saveSettings({ subtitle: $("customSub").value });
+$("customBtn").onclick = () => send({ action: "show", slot: "lower", graphic: { kind: "custom", title: $("customTitle").value, subtitle: $("customSub").value, seconds: 10 } });
+$("tickerBtn").onclick = () => send($("tickerBtn").classList.contains("on") ? { action: "hide", slot: "ticker" } : { action: "show", slot: "ticker", graphic: { kind: "ticker" } });
+document.querySelectorAll("[data-ticker]").forEach(button => {
+  button.onclick = () => send(button.classList.contains("on") ? { action: "hide", slot: "ticker" } : { action: "show", slot: "ticker", graphic: { kind: "lineup", side: button.dataset.ticker } });
+});
+$("planFilter").onchange = renderGames;
+$("reloadGames").onclick = () => loadGames().catch(e => console.warn(e));
+$("clearAll").onclick = () => send({ action: "hide" });
+$("unlink").onclick = () => send({ action: "unlink" });
+$("playerBtn").onclick = () => {
+  const [team, name] = $("playerSelect").value.split("|");
+  const player = lineupOf(match[team]).find(p => p.name === name);
+  if (player) send({ action: "show", slot: "lower", graphic: { kind: "player", team, player, seconds: 9 } });
+};
+$("motmBtn").onclick = () => {
+  const name = match.motm;
+  for (const team of ["home", "away"]) {
+    const people = [...lineupOf(match[team]), ...((match[team].lineup || {}).subs || [])];
+    const player = people.find(p => p.name === name);
+    if (player) return send({ action: "show", slot: "lower", graphic: { kind: "motm", team, player, seconds: 12 } });
+  }
+};
+$("startTunnel").onclick = () => send({ action: "tunnel", value: true });
+$("stopTunnel").onclick = () => send({ action: "tunnel", value: false });
+$("copyLink").onclick = () => {
+  $("tunnelLink").select();
+  document.execCommand("copy");
+  $("copyLink").textContent = t("Kopiert");
+  setTimeout(() => { $("copyLink").textContent = t("Link kopieren"); }, 1500);
+};
+
+const stream = new EventSource("/media/events");
+stream.onmessage = e => apply(JSON.parse(e.data));
+stream.onerror = () => pill("warn", t("Dienst nicht erreichbar"));
+translatePage();
+loadGames().catch(e => console.warn(e));
+</script>
+</body>
+</html>

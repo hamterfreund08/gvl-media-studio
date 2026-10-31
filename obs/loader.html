@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>GVL Media Studio</title>
+<style>
+html, body { margin: 0; height: 100%; background: #1b1c20; color: #9a9dab; font: 600 13px "Segoe UI", sans-serif; }
+body { display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<span>Media Studio startet ...</span>
+<script>
+const DOCK = "http://127.0.0.1:50231/media/dock";
+function check() {
+  fetch("http://127.0.0.1:50231/media/assets/gvl_logo.png", { mode: "no-cors" })
+    .then(() => location.replace(DOCK))
+    .catch(() => setTimeout(check, 1000));
+}
+check();
+</script>
+</body>
+</html>

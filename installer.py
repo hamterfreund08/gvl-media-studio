@@ -10,6 +10,7 @@ import ctypes
 import json
 import os
 import shutil
+import stat
 import sys
 import time
 from ctypes import wintypes
@@ -30,6 +31,8 @@ SERVICE_EXE = "gvl media studio.exe"
 TUNNEL_EXE = "cloudflared.exe"
 PROCESS_TERMINATE = 0x1
 STOP_WAIT = 5
+COPY_ATTEMPTS = 6
+COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
 
 
@@ -173,13 +176,43 @@ def other_docks(docks):
     return [d for d in docks if d.get("title") != TITLE]
 
 
+def make_writable(path):
+    if os.path.exists(path):
+        os.chmod(path, stat.S_IWRITE)
+
+
+def force_delete(function, path, _error):
+    try:
+        make_writable(path)
+        function(path)
+    except OSError:
+        pass
+
+
+def copy_file(source, target):
+    make_writable(target)
+    shutil.copy2(source, target)
+    make_writable(target)
+
+
+def copy_program(source):
+    for attempt in range(1, COPY_ATTEMPTS + 1):
+        try:
+            shutil.copytree(source, TARGET, ignore=shutil.ignore_patterns("*.bat"), copy_function=copy_file, dirs_exist_ok=True)
+            return
+        except OSError:
+            if attempt == COPY_ATTEMPTS:
+                raise
+            time.sleep(COPY_DELAY)
+
+
 def install():
     source = os.path.dirname(os.path.abspath(sys.executable))
     if os.path.normcase(source) != os.path.normcase(TARGET):
         stop_service()
         for folder in (USER_TARGET, SHARED_TARGET):
-            shutil.rmtree(folder, ignore_errors=True)
-        shutil.copytree(source, TARGET, dirs_exist_ok=True)
+            shutil.rmtree(folder, onexc=force_delete)
+        copy_program(source)
     missing = [name for name in REQUIRED_FILES if not os.path.isfile(os.path.join(TARGET, name))]
     if missing:
         raise OSError(f"Dateien fehlen in {TARGET}: {', '.join(missing)}. Der Virenschutz hat sie eventuell entfernt.")
@@ -201,7 +234,7 @@ def uninstall():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))])
     set_replay_buffer(False)
     for folder in (USER_TARGET, SHARED_TARGET):
-        shutil.rmtree(folder, ignore_errors=True)
+        shutil.rmtree(folder, onexc=force_delete)
     message("GVL Media Studio wurde entfernt.")
 
 
@@ -215,5 +248,8 @@ def run(action):
         time.sleep(1)
     try:
         action()
+    except shutil.Error as e:
+        path = e.args[0][0][1]
+        message(f"Einrichtung fehlgeschlagen.\n\nDiese Datei liess sich nicht ersetzen:\n{path}\n\nOBS schliessen, den Ordner {TARGET} von Hand loeschen und die Installation erneut starten. Blockiert der Virenschutz die Datei, den Ordner dort als Ausnahme eintragen.", MB_ICONERROR)
     except (OSError, ValueError) as e:
         message(f"Einrichtung fehlgeschlagen:\n{e}", MB_ICONERROR)

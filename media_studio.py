@@ -38,7 +38,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.12.2"
+VERSION = "1.13.0"
 HOST = "127.0.0.1"
 PORT = 40231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
@@ -50,7 +50,7 @@ THUMB_AVATARS = "https://thumbnails.roblox.com/v1/users/avatar?userIds={}&size=7
 
 DATA_KEYS = ("league", "teams", "matches", "standings", "games", "top")
 DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de", "transition": "gvl",
-                    "socials": {"instagram": "", "twitch": "", "tiktok": "", "youtube": ""}}
+                    "socials": {"discord": "discord.gg/gvl", "instagram": "", "twitch": "", "tiktok": "", "youtube": ""}}
 SOCIAL_MAX = 40
 REPLAY_SECONDS = (10, 20, 30)
 TRANSITIONS = ("gvl", "fast", "team", "cut")
@@ -87,7 +87,8 @@ def load_settings():
     except (OSError, ValueError):
         return settings
     settings.update({k: v for k, v in saved.items() if k in settings and type(v) is type(settings[k])})
-    settings["socials"] = {key: str(settings["socials"].get(key) or "")[:SOCIAL_MAX] for key in DEFAULT_SETTINGS["socials"]}
+    saved_socials = settings["socials"]
+    settings["socials"] = {key: str(saved_socials.get(key, default) or "")[:SOCIAL_MAX] for key, default in DEFAULT_SETTINGS["socials"].items()}
     return settings
 
 

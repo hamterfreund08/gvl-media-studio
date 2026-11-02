@@ -138,7 +138,7 @@ The overlay source has to be on top in every scene. When switching from the dock
 
 ## Social media
 
-Enter your Instagram, Twitch, TikTok and YouTube channels under **Social media** in the **Stream** tab. A missing `@` is added automatically.
+Enter your Discord, Instagram, Twitch, TikTok and YouTube channels under **Social media** in the **Stream** tab. A missing `@` is added automatically, except for links like `discord.gg/gvl`. Discord is prefilled with `discord.gg/gvl`, so it always shows in the corner.
 
 - **Show** next to a channel: a lower third for just that channel with a large logo and Follow us on ….
 - **Show all:** Follow Us with all channels and their logos for 9 seconds.

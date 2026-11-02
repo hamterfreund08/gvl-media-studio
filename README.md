@@ -138,7 +138,7 @@ Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das 
 
 ## Social Media
 
-Im Reiter **Stream** unter **Social Media** trägst du die Kanäle für Instagram, Twitch, TikTok und YouTube ein. Ohne `@` wird es automatisch ergänzt.
+Im Reiter **Stream** unter **Social Media** trägst du die Kanäle für Discord, Instagram, Twitch, TikTok und YouTube ein. Ohne `@` wird es automatisch ergänzt, außer bei Links wie `discord.gg/gvl`. Discord ist mit `discord.gg/gvl` vorausgefüllt und erscheint damit immer in der Ecke.
 
 - **Zeigen** neben einem Kanal: Bauchbinde nur für diesen Kanal, mit großem Logo und „Follow us on …“.
 - **Alle zeigen:** „Follow Us“ mit allen Kanälen und ihren Logos für 9 Sekunden.

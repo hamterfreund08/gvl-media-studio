@@ -76,7 +76,7 @@ You do not need Python or any other software for normal use.
 1. Download the latest [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip).
 2. Extract the whole ZIP into a folder. Do not run anything from inside the ZIP window.
 3. Close OBS.
-4. Run `GVL Media Studio.exe` in the extracted folder and wait for the confirmation.
+4. Run `GVL Media Studio.exe` in the extracted folder and click **Install** in the window.
 5. Open OBS and enable **GVL Media Studio** in the **Docks** menu.
 
 The panel is now available and the `GVL Broadcast Overlay` source is in your scenes. From now on the program starts and stops together with OBS.
@@ -87,11 +87,15 @@ If your antivirus blocks the copy, the program stays in the extracted folder and
 
 ### Updating
 
-Close OBS, extract the new ZIP, run `GVL Media Studio.exe` there and answer **Yes** to the question. Your settings and stream plan are kept.
+When a new version is out, the panel shows a notice at the top. **Update now** downloads it from GitHub and restarts the panel. If the OBS script changes, the panel asks you to restart OBS once. Updating is not possible while the tunnel is running.
+
+You can also click **Open app** in the panel, close OBS and choose **Update** in the window. This works from version 1.9.0 on. Update older versions once by hand: close OBS, extract the new ZIP, run `GVL Media Studio.exe` there and click **Update**. Your settings and stream plan are kept.
+
+**Repair** in the same window fixes a broken setup, for example when the panel is missing in OBS.
 
 ### Uninstalling
 
-Close OBS, run `GVL Media Studio.exe` in the extracted folder and answer **No** to the question. Your settings are stored in `%APPDATA%\GVLMediaStudio`, and you can delete that folder yourself if you want to.
+Close OBS, run `GVL Media Studio.exe` (or click **Open app** in the panel) and click **Uninstall**. Your settings are stored in `%APPDATA%\GVLMediaStudio`, and you can delete that folder yourself if you want to.
 
 ## Connecting to a match
 

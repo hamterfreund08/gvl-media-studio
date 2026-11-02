@@ -76,7 +76,7 @@ Python oder andere Programme musst du für die normale Nutzung nicht installiere
 1. Lade die aktuelle [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip) herunter.
 2. Entpacke die ZIP komplett in einen Ordner. Starte nichts direkt aus dem ZIP-Fenster.
 3. Schließe OBS.
-4. Starte im entpackten Ordner `GVL Media Studio.exe` und warte auf die Bestätigung.
+4. Starte im entpackten Ordner `GVL Media Studio.exe` und klicke im Fenster auf **Installieren**.
 5. Öffne OBS und schalte im Menü **Docks** den Eintrag **GVL Media Studio** ein.
 
 Das Panel ist jetzt da, und die Quelle `GVL Broadcast Overlay` liegt in deinen Szenen. Das Programm startet und beendet sich ab jetzt automatisch mit OBS.
@@ -87,11 +87,15 @@ Blockiert der Virenschutz das Kopieren, bleibt das Programm im entpackten Ordner
 
 ### Aktualisieren
 
-OBS schließen, die neue ZIP entpacken, dort `GVL Media Studio.exe` starten und bei der Frage **Ja** wählen. Einstellungen und Stream-Plan bleiben erhalten.
+Gibt es eine neue Version, zeigt das Panel oben einen Hinweis. Ein Klick auf **Jetzt aktualisieren** lädt sie von GitHub und startet das Panel neu. Ändert sich dabei das OBS-Skript, steht im Panel, dass OBS einmal neu gestartet werden muss. Während der Tunnel läuft, geht das Update nicht.
+
+Alternativ im Panel auf **App öffnen** klicken, OBS schließen und im Fenster **Aktualisieren** wählen. Ab Version 1.9.0 geht das so, ältere Versionen einmal von Hand aktualisieren: OBS schließen, die neue ZIP entpacken, dort `GVL Media Studio.exe` starten und auf **Aktualisieren** klicken. Einstellungen und Stream-Plan bleiben erhalten.
+
+Im selben Fenster repariert **Reparieren** eine kaputte Einrichtung, zum Beispiel wenn das Panel in OBS fehlt.
 
 ### Deinstallieren
 
-OBS schließen, im entpackten Ordner `GVL Media Studio.exe` starten und bei der Frage **Nein** wählen. Deine Einstellungen liegen in `%APPDATA%\GVLMediaStudio`. Diesen Ordner kannst du bei Bedarf selbst löschen.
+OBS schließen, `GVL Media Studio.exe` starten (oder im Panel **App öffnen**) und auf **Deinstallieren** klicken. Deine Einstellungen liegen in `%APPDATA%\GVLMediaStudio`. Diesen Ordner kannst du bei Bedarf selbst löschen.
 
 ## Mit einem Spiel verbinden
 

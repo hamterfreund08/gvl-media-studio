@@ -17,11 +17,13 @@ import shutil
 import sys
 import time
 import traceback
+import zipfile
 
 import aiohttp
 from aiohttp import web
 
 import installer
+import updater
 
 BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 WEB_DIR = os.path.join(BASE_DIR, "web")
@@ -36,9 +38,9 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.8.5"
+VERSION = "1.9.0"
 HOST = "127.0.0.1"
-PORT = 50231
+PORT = 40231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
 LOCAL_ORIGINS = (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}", "null")
 NO_WINDOW = 0x08000000
@@ -66,6 +68,11 @@ PLAN_REFRESH = 60
 RECENT_KICKOFF = 3 * 3600
 OBS_START_WAIT = 90
 OBS_CHECK_EVERY = 5
+UPDATE_FIRST_CHECK = 15
+UPDATE_CHECK_EVERY = 6 * 3600
+STAGE_CLEAN_DELAY = 20
+STAGE_DIR = os.path.join(EXE_DIR, updater.STAGE)
+NO_UPDATE = {"state": "none", "version": "", "url": "", "page": "", "progress": 0, "message": "", "restartObs": False}
 
 
 def load_settings():
@@ -111,6 +118,7 @@ class Studio:
         self.auto = {"goal": True, "card": True, "sub": True}
         self.clients = set()
         self.tunnel = {"state": "off", "link": "", "message": ""}
+        self.update = dict(NO_UPDATE)
 
     def status(self):
         return {"linked": bool(self.job), "stale": self.stale, "by": self.by}
@@ -119,7 +127,8 @@ class Studio:
         return {"type": kind, "version": VERSION, "status": self.status(), "tunnel": self.tunnel, "match": self.match, "visible": self.visible,
                 "auto": self.auto, "assets": assets_for(self.match), "events": self.events[-8:],
                 "settings": self.settings, "plan": self.plan, "results": self.results, "buffer": self.buffer, "dataStamp": self.data_stamp,
-                "clips": [{k: c[k] for k in ("id", "name", "time")} for c in self.clips]}
+                "clips": [{k: c[k] for k in ("id", "name", "time")} for c in self.clips],
+                "update": {**{k: v for k, v in self.update.items() if k != "url"}, "download": bool(self.update["url"])}}
 
     def send(self, data):
         text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
@@ -522,6 +531,14 @@ async def command(request):
         save_settings()
         studio.broadcast()
         background.append(asyncio.create_task(refresh_plan()))
+    elif action == "update":
+        background.append(asyncio.create_task(run_update()))
+    elif action == "openRelease" and studio.update["page"].startswith("https://github.com/"):
+        os.startfile(studio.update["page"])
+    elif action == "openApp" and getattr(sys, "frozen", False):
+        updater.launch(os.path.join(EXE_DIR, installer.REQUIRED_FILES[0]), "--app")
+    elif action == "updateSeen" and studio.update["state"] == "done":
+        set_update(**NO_UPDATE)
     elif action == "tunnel":
         background.append(asyncio.create_task(start_tunnel() if data.get("value") else stop_tunnel()))
     studio.send({"type": "command", "action": action, "slot": slot, "graphic": data.get("graphic"),
@@ -684,6 +701,80 @@ async def watch_obs(app):
             os._exit(0)
 
 
+def set_update(**values):
+    studio.update.update(values)
+    studio.broadcast()
+
+
+async def check_update():
+    if studio.update["state"] in ("downloading", "restarting"):
+        return
+    found = await asyncio.to_thread(updater.latest)
+    if not found or not updater.is_newer(found["version"], VERSION):
+        return
+    if studio.update["state"] in ("available", "error") and studio.update["version"] == found["version"]:
+        return
+    print(f"Update gefunden: {found['version']}", flush=True)
+    set_update(state="available", progress=0, message="", **found)
+
+
+async def watch_updates():
+    await asyncio.sleep(UPDATE_FIRST_CHECK)
+    while True:
+        try:
+            await check_update()
+        except (OSError, ValueError) as e:
+            print(f"Update-Pruefung fehlgeschlagen: {e}", flush=True)
+        await asyncio.sleep(UPDATE_CHECK_EVERY)
+
+
+async def run_update():
+    if studio.update["state"] not in ("available", "error") or not studio.update["url"] or studio.tunnel["state"] != "off":
+        return
+    set_update(state="downloading", progress=0, message="")
+    loop = asyncio.get_running_loop()
+
+    def progress(percent):
+        if percent >= studio.update["progress"] + 5:
+            studio.update["progress"] = percent
+            loop.call_soon_threadsafe(studio.broadcast)
+
+    try:
+        await asyncio.to_thread(updater.download, studio.update["url"], STAGE_DIR, progress)
+    except (OSError, zipfile.BadZipFile) as e:
+        print(f"Update nicht geladen: {e}", flush=True)
+        await asyncio.to_thread(updater.clean, STAGE_DIR)
+        set_update(state="error", message=str(e))
+        return
+    set_update(state="restarting", progress=100)
+    await asyncio.sleep(1)
+    await stop_tunnel()
+    try:
+        updater.start(STAGE_DIR, EXE_DIR, "service")
+    except OSError as e:
+        print(f"Update nicht gestartet: {e}", flush=True)
+        set_update(state="error", message=str(e))
+        return
+    print(f"Update auf {studio.update['version']} gestartet", flush=True)
+    os._exit(0)
+
+
+def after_update():
+    result = updater.take_result()
+    if not result:
+        return
+    if result.get("error"):
+        studio.update.update(state="error", message=str(result["error"]), page=updater.RELEASE_PAGE)
+    else:
+        studio.update.update(state="done", version=VERSION, restartObs=bool(result.get("restartObs")))
+
+
+async def clean_stage():
+    await asyncio.sleep(STAGE_CLEAN_DELAY)
+    if os.path.isdir(STAGE_DIR):
+        await asyncio.to_thread(updater.clean, STAGE_DIR)
+
+
 async def on_startup(app):
     global http
     for path in (REPLAY_CMD_FILE, REPLAY_EVENT_FILE):
@@ -693,6 +784,10 @@ async def on_startup(app):
     background.append(asyncio.create_task(watch_links()))
     background.append(asyncio.create_task(watch_plan()))
     background.append(asyncio.create_task(watch_replay()))
+    background.append(asyncio.create_task(clean_stage()))
+    after_update()
+    if getattr(sys, "frozen", False):
+        background.append(asyncio.create_task(watch_updates()))
     if "--no-obs-watch" not in sys.argv:
         background.append(asyncio.create_task(watch_obs(app)))
     with open(READY_FILE, "w", encoding="utf-8") as f:
@@ -777,9 +872,12 @@ def main():
 
 
 if __name__ == "__main__":
-    if "--install" in sys.argv or "--uninstall" in sys.argv:
-        installer.run(installer.install if "--install" in sys.argv else installer.uninstall)
-    elif installer.started_from_package():
-        installer.choose()
+    if "--apply-update" in sys.argv:
+        open_log()
+        index = sys.argv.index("--apply-update")
+        updater.apply(sys.argv[index + 1], sys.argv[index + 2] if len(sys.argv) > index + 2 else "service")
+    elif "--app" in sys.argv or installer.started_from_package():
+        import app
+        app.run(VERSION)
     else:
         main()

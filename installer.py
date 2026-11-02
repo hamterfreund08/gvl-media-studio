@@ -15,6 +15,8 @@ import shutil
 import stat
 import sys
 import time
+import urllib.parse
+import urllib.request
 from ctypes import wintypes
 from pathlib import Path
 
@@ -24,6 +26,8 @@ USER_TARGET = os.path.join(os.environ["LOCALAPPDATA"], "GVLMediaStudio")
 SHARED_TARGET = os.path.join(os.environ.get("PROGRAMDATA", r"C:\ProgramData"), "GVLMediaStudio")
 TARGET = USER_TARGET if USER_TARGET.isascii() else SHARED_TARGET
 OBS_DIR = os.path.join(os.environ["APPDATA"], "obs-studio")
+SETTINGS_DIR = os.path.join(os.environ["APPDATA"], "GVLMediaStudio")
+VERSION_FILE = "version.txt"
 SCRIPT = "gvl_media_studio.lua"
 MB_ICONERROR = 0x10
 MB_ICONINFO = 0x40
@@ -36,9 +40,6 @@ STOP_WAIT = 5
 COPY_ATTEMPTS = 6
 COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
-MB_YESNOCANCEL_QUESTION = 0x23
-ANSWER_YES = 6
-ANSWER_NO = 7
 
 
 def message(text, icon=MB_ICONINFO):
@@ -242,8 +243,8 @@ def install():
     for path in scene_files():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))] + [script])
     set_replay_buffer(True)
-    note = "" if program == TARGET else f"\n\nDer Virenschutz hat das Kopieren blockiert. Das Programm bleibt deshalb in diesem Ordner, den Ordner bitte nicht verschieben oder loeschen:\n{program}"
-    message(f"GVL Media Studio ist installiert.\n\nOBS starten und unter Docks den Eintrag GVL Media Studio einschalten.{note}")
+    note = "" if program == TARGET else f" Der Virenschutz hat das Kopieren blockiert. Das Programm bleibt deshalb in diesem Ordner, bitte nicht verschieben oder löschen: {program}"
+    return f"Installiert. OBS starten und unter Docks den Eintrag GVL Media Studio einschalten.{note}"
 
 
 def uninstall():
@@ -255,7 +256,7 @@ def uninstall():
     set_replay_buffer(False)
     for folder in (USER_TARGET, SHARED_TARGET):
         shutil.rmtree(folder, onexc=force_delete)
-    message("GVL Media Studio wurde entfernt.")
+    return "GVL Media Studio wurde entfernt."
 
 
 def started_from_package():
@@ -264,37 +265,35 @@ def started_from_package():
     return getattr(sys, "frozen", False) and len(sys.argv) == 1 and folder not in installed
 
 
-def is_installed():
-    if os.path.isfile(os.path.join(TARGET, REQUIRED_FILES[0])):
-        return True
-    return any(TITLE in read_text(path) for path in config_files() if os.path.isfile(path))
+def installed_folder():
+    for path in config_files():
+        if not os.path.isfile(path):
+            continue
+        for line in read_text(path).split("\n"):
+            if not line.startswith("ExtraBrowserDocks="):
+                continue
+            try:
+                docks = json.loads(line.rstrip("\r").split("=", 1)[1] or "[]")
+            except ValueError:
+                continue
+            for dock in docks:
+                url = str(dock.get("url") or "")
+                if dock.get("title") == TITLE and url.startswith("file:"):
+                    return os.path.dirname(urllib.request.url2pathname(urllib.parse.urlparse(url).path))
+    return TARGET if os.path.isfile(os.path.join(TARGET, REQUIRED_FILES[0])) else ""
 
 
-def choose():
-    if not is_installed():
-        run(install)
-        return
-    text = "GVL Media Studio ist schon installiert.\n\nJa: installieren oder aktualisieren\nNein: entfernen\nAbbrechen: nichts tun"
-    answer = ctypes.windll.user32.MessageBoxW(None, text, TITLE, MB_YESNOCANCEL_QUESTION)
-    if answer == ANSWER_YES:
-        run(install)
-    elif answer == ANSWER_NO:
-        run(uninstall)
-
-
-def run(action):
-    if not os.path.isdir(OBS_DIR):
-        message("OBS wurde auf diesem PC nicht gefunden.", MB_ICONERROR)
-        return
-    while obs_running():
-        if ctypes.windll.user32.MessageBoxW(None, "Bitte OBS schliessen und dann auf OK klicken.", TITLE, 0x31) != 1:
-            return
-        time.sleep(1)
+def version_in(folder):
     try:
-        action()
-    except shutil.Error as e:
-        failed = e.args[0]
-        names = "\n".join(os.path.basename(item[1]) for item in failed[:5])
-        message(f"Einrichtung fehlgeschlagen.\n\nDiese Dateien liessen sich nicht kopieren ({len(failed)}):\n{names}\n\nGrund: {failed[0][2]}\n\nDen Ordner zu loeschen hilft hier nicht. Meist blockiert der Virenschutz die Datei. Dort die Datei aus der Quarantaene holen und diesen Ordner als Ausnahme eintragen:\n{TARGET}\n\nDanach dieses Programm erneut starten.", MB_ICONERROR)
-    except (OSError, ValueError) as e:
-        message(f"Einrichtung fehlgeschlagen:\n{e}", MB_ICONERROR)
+        return read_text(os.path.join(folder, VERSION_FILE)).strip()
+    except OSError:
+        return ""
+
+
+def describe(error):
+    if isinstance(error, shutil.Error):
+        failed = error.args[0]
+        names = ", ".join(os.path.basename(item[1]) for item in failed[:5])
+        return (f"Diese Dateien ließen sich nicht kopieren ({len(failed)}): {names}. Grund: {failed[0][2]}. "
+                f"Meist blockiert der Virenschutz die Datei. Dort die Datei aus der Quarantäne holen und diesen Ordner als Ausnahme eintragen: {TARGET}")
+    return str(error)

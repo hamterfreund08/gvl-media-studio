@@ -65,12 +65,24 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
 .game input { margin-top: 2px; accent-color: var(--accent); cursor: pointer; }
 .game b { display: block; font-size: 12px; font-weight: 800; line-height: 1.25; }
 .game small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 500; }
+.top .app { margin-left: auto; padding: 5px 9px; font-size: 11px; font-weight: 800; }
+.top small { color: var(--muted); font-size: 11px; font-weight: 600; }
+#update { border-color: var(--warn); }
+#update .hint { text-align: left; }
 [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<div class="top"><img src="/media/assets/gvl_logo.png" alt=""><b>Media Studio</b></div>
+<div class="top"><img src="/media/assets/gvl_logo.png" alt=""><b>Media Studio</b><small id="version"></small><button id="openApp" class="app">App öffnen</button></div>
 <div class="bar"><div class="pill" id="pill"><i></i><span id="pillText">Startet</span></div><div class="lang"><button data-lang="de">DE</button><button data-lang="en">EN</button></div></div>
+
+<section id="update" hidden>
+  <h2>Update</h2>
+  <div class="hint" id="updateText"></div>
+  <button class="primary" id="updateBtn">Jetzt aktualisieren</button>
+  <button id="releaseBtn">Auf GitHub öffnen</button>
+  <button id="updateSeen">Ausblenden</button>
+</section>
 
 <button class="clear" id="clearAll">Alles ausblenden</button>
 
@@ -266,6 +278,17 @@ const EN = {
   "Noch keine Clips gespeichert.": "No clips saved yet.", "Zeitlupe": "Slow motion", "Alle Wettbewerbe": "All competitions", "Videos-Ordner": "Videos folder",
   "Der Tunnel wurde beendet. Bitte neu starten.": "The tunnel stopped. Please start it again.", "cloudflared.exe fehlt. Bitte neu installieren.": "cloudflared.exe is missing. Please reinstall.",
   "Cloudflare hat nicht geantwortet. Bitte erneut versuchen.": "Cloudflare did not respond. Please try again.",
+  "Jetzt aktualisieren": "Update now", "App öffnen": "Open app", "Erneut versuchen": "Try again", "Auf GitHub öffnen": "Open on GitHub", "Ausblenden": "Dismiss",
+  "Version {new} ist da, du hast {old}.": "Version {new} is available, you have {old}.",
+  "Lade sie auf GitHub herunter und installiere sie wie gewohnt.": "Download it on GitHub and install it as usual.",
+  "Beende vorher den Tunnel.": "Stop the tunnel first.",
+  "Das Panel startet danach kurz neu.": "The panel restarts briefly afterwards.",
+  "Update wird geladen ... {percent} %": "Downloading update ... {percent} %",
+  "Media Studio startet neu ...": "Media Studio is restarting ...",
+  "Update fehlgeschlagen:": "Update failed:",
+  "Falls es wieder scheitert, die neue Version auf GitHub laden.": "If it fails again, download the new version on GitHub.",
+  "Update auf {new} fertig.": "Updated to {new}.",
+  "Bitte OBS einmal neu starten.": "Please restart OBS once.",
 };
 const originalText = new WeakMap();
 let language = "de";
@@ -311,6 +334,7 @@ let plan = [];
 let games = [];
 let saveTimer = null;
 let version = null;
+let tunnelState = "off";
 let buffer = false;
 let dataStamp = 0;
 
@@ -323,6 +347,32 @@ function saveSettings(values) {
   Object.assign(settings, values);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => send({ action: "settings", values }), SAVE_DELAY);
+}
+
+function fill(text, values) { return t(text).replace(/\{(\w+)\}/g, (_, key) => values[key]); }
+function renderUpdate(update) {
+  const state = update.state;
+  const tunnelOn = tunnelState !== "off";
+  $("update").hidden = state === "none";
+  $("updateBtn").hidden = !["available", "error"].includes(state) || !update.download;
+  $("updateBtn").disabled = tunnelOn;
+  $("updateBtn").textContent = t(state === "error" ? "Erneut versuchen" : "Jetzt aktualisieren");
+  $("releaseBtn").hidden = !["available", "error"].includes(state);
+  $("updateSeen").hidden = state !== "done";
+  let text = "";
+  if (state === "available") {
+    text = fill("Version {new} ist da, du hast {old}.", { new: update.version, old: version });
+    text += " " + t(!update.download ? "Lade sie auf GitHub herunter und installiere sie wie gewohnt." : tunnelOn ? "Beende vorher den Tunnel." : "Das Panel startet danach kurz neu.");
+  } else if (state === "downloading") {
+    text = fill("Update wird geladen ... {percent} %", { percent: update.progress });
+  } else if (state === "restarting") {
+    text = t("Media Studio startet neu ...");
+  } else if (state === "error") {
+    text = `${t("Update fehlgeschlagen:")} ${update.message} ${t("Falls es wieder scheitert, die neue Version auf GitHub laden.")}`;
+  } else if (state === "done") {
+    text = fill("Update auf {new} fertig.", { new: update.version }) + (update.restartObs ? " " + t("Bitte OBS einmal neu starten.") : "");
+  }
+  $("updateText").textContent = text;
 }
 
 function pill(kind, text) {
@@ -530,6 +580,9 @@ function apply(message) {
     }
     renderReplay(message.clips || []);
     renderTunnel(message.tunnel);
+    tunnelState = message.tunnel.state;
+    $("version").textContent = version;
+    if (message.update) renderUpdate(message.update);
     renderStatus(message.status);
     renderMatch();
     renderLog();
@@ -612,6 +665,10 @@ $("motmBtn").onclick = () => {
     if (player) return send({ action: "show", slot: "lower", graphic: { kind: "motm", team, player, seconds: 12 } });
   }
 };
+$("openApp").onclick = () => send({ action: "openApp" });
+$("updateBtn").onclick = () => send({ action: "update" });
+$("releaseBtn").onclick = () => send({ action: "openRelease" });
+$("updateSeen").onclick = () => send({ action: "updateSeen" });
 $("startTunnel").onclick = () => send({ action: "tunnel", value: true });
 $("stopTunnel").onclick = () => send({ action: "tunnel", value: false });
 $("copyLink").onclick = () => {

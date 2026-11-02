@@ -6,7 +6,7 @@ void* ShellExecuteA(void* hwnd, const char* operation, const char* file, const c
 ]]
 
 local SOURCE_NAME = "GVL Broadcast Overlay"
-local OVERLAY_URL = "http://127.0.0.1:50231/media/overlay"
+local OVERLAY_URL = "http://127.0.0.1:40231/media/overlay"
 local EXE_NAME = "GVL Media Studio.exe"
 local WIDTH = 1920
 local HEIGHT = 1080

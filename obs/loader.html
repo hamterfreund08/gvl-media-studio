@@ -11,9 +11,9 @@ body { display: flex; align-items: center; justify-content: center; }
 <body>
 <span>Media Studio startet ...</span>
 <script>
-const DOCK = "http://127.0.0.1:50231/media/dock";
+const DOCK = "http://127.0.0.1:40231/media/dock";
 function check() {
-  fetch("http://127.0.0.1:50231/media/assets/gvl_logo.png", { mode: "no-cors" })
+  fetch("http://127.0.0.1:40231/media/assets/gvl_logo.png", { mode: "no-cors" })
     .then(() => location.replace(DOCK))
     .catch(() => setTimeout(check, 1000));
 }

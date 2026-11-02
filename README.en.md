@@ -125,16 +125,16 @@ The link stays valid while the tunnel is running. If you restart the tunnel, cli
 
 The **Stream** tab lists all OBS scenes under **Scenes**. A click switches to that scene using the transition selected above:
 
-- **GVL stinger:** White, red and dark bands sweep diagonally across the screen with the GVL logo in the middle.
-- **Fast:** The same sweep, shorter, for quick changes.
-- **Team colours:** Bands in both teams' colours with both crests in the middle. Without a connected match it falls back to the GVL stinger.
+- **GVL Swipe:** White, red and dark bands sweep diagonally across the screen with the GVL logo in the middle.
+- **GVL Swipe Fast:** The same sweep, shorter, for quick changes.
+- **Team colours:** Bands in both teams' colours with both crests in the middle. Without a connected match it falls back to GVL Swipe.
 - **Hard cut:** Direct switch without animation.
 
 The scene switches while the screen is fully covered, so viewers never see the cut. The selected transition is also used for Stream Starting Soon, Be Right Back and Stream Ending. **Test transition** plays it once without switching scenes.
 
-The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.11.0 the scenes only appear once OBS has been restarted.
+The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.11.1 the scenes only appear once OBS has been restarted.
 
-**In OBS itself:** **GVL Stinger** and **GVL Stinger Schnell** are also listed under **Scene Transitions** as stinger videos. Pick one and it plays on every scene change, including clicks on a scene, Studio Mode and hotkeys. Team colours are only available in the panel because the videos have fixed colours. After updating from the panel, both transitions appear once OBS has been closed and opened again.
+**In OBS itself:** **GVL Swipe** and **GVL Swipe Fast** are also listed under **Scene Transitions** as stinger videos. Pick one and it plays on every scene change, including clicks on a scene, Studio Mode and hotkeys. Team colours are only available in the panel because the videos have fixed colours. After updating from the panel, both transitions appear once OBS has been closed and opened again.
 
 ## Replays
 

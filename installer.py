@@ -42,7 +42,7 @@ COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
 STINGER_DIR = "stingers"
 STINGER_ID = "obs_stinger_transition"
-STINGER_PREFIX = "GVL Stinger"
+STINGER_PREFIXES = ("GVL Swipe", "GVL Stinger")
 
 
 def message(text, icon=MB_ICONINFO):
@@ -149,7 +149,7 @@ def stinger_transitions(program):
 
 
 def is_our_transition(transition):
-    return transition.get("id") == STINGER_ID and str(transition.get("name") or "").startswith(STINGER_PREFIX)
+    return transition.get("id") == STINGER_ID and str(transition.get("name") or "").startswith(STINGER_PREFIXES)
 
 
 def stinger_key(transition):

@@ -1,11 +1,11 @@
 [
   {
-    "name": "GVL Stinger",
+    "name": "GVL Swipe",
     "file": "gvl_stinger.webm",
     "point": 950
   },
   {
-    "name": "GVL Stinger Schnell",
+    "name": "GVL Swipe Fast",
     "file": "gvl_stinger_fast.webm",
     "point": 540
   }

@@ -21,7 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 OUT = os.path.join(ROOT, "obs", "stingers")
 FPS = 60
-STINGERS = (("gvl", "GVL Stinger", "gvl_stinger.webm"), ("fast", "GVL Stinger Schnell", "gvl_stinger_fast.webm"))
+STINGERS = (("gvl", "GVL Swipe", "gvl_stinger.webm"), ("fast", "GVL Swipe Fast", "gvl_stinger_fast.webm"))
 FILES = {"/media/overlay": "overlay.html", "/media/assets/montserrat.ttf": "Montserrat.ttf", "/media/assets/gvl_logo.png": "gvl_logo.png"}
 
 TIMELINE = """name => {

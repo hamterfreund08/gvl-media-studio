@@ -125,16 +125,16 @@ Mit **Alles ausblenden** räumst du das Bild jederzeit frei.
 
 Im Reiter **Stream** stehen unter **Szenen** alle Szenen aus OBS. Ein Klick wechselt dorthin, mit dem Übergang, der darüber ausgewählt ist:
 
-- **GVL Stinger:** Weiße, rote und dunkle Bänder wischen schräg durchs Bild, in der Mitte das GVL-Logo.
-- **Schnell:** Derselbe Wischer, kürzer, für schnelle Wechsel.
-- **Teamfarben:** Bänder in den Farben beider Teams, in der Mitte die Wappen. Ohne verbundenes Spiel wird es der GVL Stinger.
+- **GVL Swipe:** Weiße, rote und dunkle Bänder wischen schräg durchs Bild, in der Mitte das GVL-Logo.
+- **GVL Swipe Fast:** Derselbe Wischer, kürzer, für schnelle Wechsel.
+- **Teamfarben:** Bänder in den Farben beider Teams, in der Mitte die Wappen. Ohne verbundenes Spiel wird es GVL Swipe.
 - **Harter Schnitt:** Direkter Wechsel ohne Animation.
 
 Gewechselt wird, während das Bild ganz bedeckt ist. Der Zuschauer sieht keinen Schnitt. Der ausgewählte Übergang gilt auch für Stream Starting Soon, Gleich zurück und Stream-Ende. Mit **Übergang testen** läuft er einmal ohne Szenenwechsel.
 
-Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.11.0 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.11.1 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
 
-**In OBS selbst:** Unter **Szenenübergänge** stehen außerdem **GVL Stinger** und **GVL Stinger Schnell** als Stinger-Videos. Wählst du einen davon aus, läuft er bei jedem Szenenwechsel, auch beim Klick auf eine Szene, im Studio-Modus und mit Hotkeys. Teamfarben gibt es nur im Panel, weil die Videos feste Farben haben. Nach einem Update aus dem Panel heraus erscheinen die beiden Übergänge, sobald OBS einmal geschlossen und wieder geöffnet wurde.
+**In OBS selbst:** Unter **Szenenübergänge** stehen außerdem **GVL Swipe** und **GVL Swipe Fast** als Stinger-Videos. Wählst du einen davon aus, läuft er bei jedem Szenenwechsel, auch beim Klick auf eine Szene, im Studio-Modus und mit Hotkeys. Teamfarben gibt es nur im Panel, weil die Videos feste Farben haben. Nach einem Update aus dem Panel heraus erscheinen die beiden Übergänge, sobald OBS einmal geschlossen und wieder geöffnet wurde.
 
 ## Replays
 

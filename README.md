@@ -132,7 +132,7 @@ Im Reiter **Stream** stehen unter **Szenen** alle Szenen aus OBS. Ein Klick wech
 
 Gewechselt wird, während das Bild ganz bedeckt ist. Der Zuschauer sieht keinen Schnitt. Der ausgewählte Übergang gilt auch für Stream Starting Soon, Gleich zurück und Stream-Ende. Mit **Übergang testen** läuft er einmal ohne Szenenwechsel.
 
-Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.10.0 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.10.1 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
 
 ## Replays
 

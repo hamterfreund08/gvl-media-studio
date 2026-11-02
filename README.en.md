@@ -132,7 +132,7 @@ The **Stream** tab lists all OBS scenes under **Scenes**. A click switches to th
 
 The scene switches while the screen is fully covered, so viewers never see the cut. The selected transition is also used for Stream Starting Soon, Be Right Back and Stream Ending. **Test transition** plays it once without switching scenes.
 
-The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.10.0 the scenes only appear once OBS has been restarted.
+The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.10.1 the scenes only appear once OBS has been restarted.
 
 ## Replays
 

@@ -33,7 +33,8 @@ img { display: block; }
 .screen.clip { background: #000; }
 .screen.clip::before, .screen.clip::after { display: none; }
 .screen.clip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.rbug { position: absolute; top: 52px; left: 60px; height: 64px; display: flex; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: bugIn .5s .25s var(--ease) both; }
+.rbug { position: absolute; top: 52px; right: 60px; height: 64px; display: flex; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: bugInRight .5s .25s var(--ease) both; }
+@keyframes bugInRight { from { clip-path: inset(0 0 0 100%); transform: translateX(24px); } to { clip-path: inset(0 0 0 0); transform: none; } }
 .rbug .rl { width: 64px; display: flex; align-items: center; justify-content: center; background: var(--accent); }
 .rbug .rl img { width: 46px; height: 46px; object-fit: contain; }
 .rbug .rt { display: flex; align-items: center; padding: 0 26px; background: var(--white); color: var(--ink); font-size: 30px; font-weight: 900; letter-spacing: 5px; }

@@ -165,6 +165,19 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
     <input type="text" id="tickerText" maxlength="200" placeholder="Text im Laufband" aria-label="Laufband-Text">
     <button id="tickerBtn">Laufband an</button>
   </section>
+
+  <section>
+    <h2>Social Media</h2>
+    <input type="text" data-social="instagram" maxlength="40" placeholder="Instagram (@name)" aria-label="Instagram">
+    <input type="text" data-social="twitch" maxlength="40" placeholder="Twitch (@name)" aria-label="Twitch">
+    <input type="text" data-social="tiktok" maxlength="40" placeholder="TikTok (@name)" aria-label="TikTok">
+    <input type="text" data-social="youtube" maxlength="40" placeholder="YouTube (@name)" aria-label="YouTube">
+    <div class="two">
+      <button data-lower="socials" id="socialBtn">Bauchbinde</button>
+      <button id="socialBug">Ecke an</button>
+    </div>
+    <div class="hint">Die Ecke wechselt unten links alle 7 Sekunden zum nächsten Kanal. Die Kanäle stehen auch auf den Bildschirmen.</div>
+  </section>
 </div>
 
 <div data-page="match" hidden style="display:contents">
@@ -298,6 +311,8 @@ const EN = {
   "Cloudflare hat nicht geantwortet. Bitte erneut versuchen.": "Cloudflare did not respond. Please try again.",
   "Szenen": "Scenes", "Übergang": "Transition", "Teamfarben": "Team colours", "Harter Schnitt": "Hard cut",
   "Die Szenen erscheinen nach einem Neustart von OBS.": "The scenes appear after restarting OBS.", "Übergang testen": "Test transition",
+  "Social Media": "Social media", "Bauchbinde": "Lower third", "Ecke an": "Corner on", "Ecke aus": "Corner off",
+  "Die Ecke wechselt unten links alle 7 Sekunden zum nächsten Kanal. Die Kanäle stehen auch auf den Bildschirmen.": "The corner switches to the next channel every 7 seconds at the bottom left. The channels also appear on the screens.",
   "Jetzt aktualisieren": "Update now", "App öffnen": "Open app", "Erneut versuchen": "Try again", "Auf GitHub öffnen": "Open on GitHub", "Ausblenden": "Dismiss",
   "Version {new} ist da, du hast {old}.": "Version {new} is available, you have {old}.",
   "Lade sie auf GitHub herunter und installiere sie wie gewohnt.": "Download it on GitHub and install it as usual.",
@@ -491,6 +506,8 @@ function renderLog() {
 }
 
 function renderButtons() {
+  $("socialBug").classList.toggle("on", !!visible.social);
+  $("socialBug").textContent = t(visible.social ? "Ecke aus" : "Ecke an");
   document.querySelectorAll("[data-full]").forEach(b => {
     const g = visible.full;
     b.classList.toggle("on", !!g && g.kind === b.dataset.full && (!b.dataset.side || g.side === b.dataset.side));
@@ -513,6 +530,11 @@ function renderSettings() {
   $("voiceBtn").disabled = !settings.commentators.some(n => n.trim());
   $("customBtn").disabled = !$("customTitle").value.trim();
   $("planBtn").disabled = !plan.length;
+  const socials = settings.socials || {};
+  document.querySelectorAll("[data-social]").forEach(input => { if (document.activeElement !== input) input.value = socials[input.dataset.social] || ""; });
+  const anySocial = Object.values(socials).some(v => String(v).trim());
+  $("socialBtn").disabled = !anySocial;
+  $("socialBug").disabled = !anySocial && !visible.social;
 }
 
 function renderGames() {
@@ -677,6 +699,17 @@ $("voice1").oninput = $("voice2").oninput = () => {
   saveSettings({ commentators: [$("voice1").value, $("voice2").value] });
   $("voiceBtn").disabled = !$("voice1").value.trim() && !$("voice2").value.trim();
 };
+document.querySelectorAll("[data-social]").forEach(input => {
+  input.oninput = () => {
+    const values = {};
+    document.querySelectorAll("[data-social]").forEach(field => { values[field.dataset.social] = field.value; });
+    saveSettings({ socials: values });
+    const any = Object.values(values).some(v => v.trim());
+    $("socialBtn").disabled = !any;
+    $("socialBug").disabled = !any && !visible.social;
+  };
+});
+$("socialBug").onclick = () => send(visible.social ? { action: "hide", slot: "social" } : { action: "show", slot: "social", graphic: { kind: "socials" } });
 $("tickerText").oninput = () => saveSettings({ ticker: $("tickerText").value });
 $("customTitle").oninput = () => {
   saveSettings({ title: $("customTitle").value });

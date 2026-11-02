@@ -38,7 +38,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.11.1"
+VERSION = "1.12.0"
 HOST = "127.0.0.1"
 PORT = 40231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
@@ -49,7 +49,9 @@ THUMB_ASSETS = "https://thumbnails.roblox.com/v1/assets?assetIds={}&size=420x420
 THUMB_AVATARS = "https://thumbnails.roblox.com/v1/users/avatar?userIds={}&size=720x720&format=Png&isCircular=false"
 
 DATA_KEYS = ("league", "teams", "matches", "standings", "games", "top")
-DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de", "transition": "gvl"}
+DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de", "transition": "gvl",
+                    "socials": {"instagram": "", "twitch": "", "tiktok": "", "youtube": ""}}
+SOCIAL_MAX = 40
 REPLAY_SECONDS = (10, 20, 30)
 TRANSITIONS = ("gvl", "fast", "team", "cut")
 CUT_FALLBACK = 3
@@ -85,6 +87,7 @@ def load_settings():
     except (OSError, ValueError):
         return settings
     settings.update({k: v for k, v in saved.items() if k in settings and type(v) is type(settings[k])})
+    settings["socials"] = {key: str(settings["socials"].get(key) or "")[:SOCIAL_MAX] for key in DEFAULT_SETTINGS["socials"]}
     return settings
 
 
@@ -106,7 +109,7 @@ class Studio:
         self.stale = False
         self.match = None
         self.events = []
-        self.visible = {"full": None, "lower": None, "ticker": None}
+        self.visible = {"full": None, "lower": None, "ticker": None, "social": None}
         self.settings = load_settings()
         self.data = load_data()
         self.data_stamp = 0
@@ -531,7 +534,9 @@ async def command(request):
         await asyncio.to_thread(open_folder)
     elif action == "settings" and isinstance(data.get("values"), dict):
         for name, value in data["values"].items():
-            if name in studio.settings and type(value) is type(studio.settings[name]):
+            if name == "socials" and isinstance(value, dict):
+                studio.settings["socials"] = {key: str(value.get(key) or "").strip()[:SOCIAL_MAX] for key in DEFAULT_SETTINGS["socials"]}
+            elif name in studio.settings and type(value) is type(studio.settings[name]):
                 studio.settings[name] = value
         save_settings()
         studio.broadcast()

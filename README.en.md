@@ -132,9 +132,17 @@ The **Stream** tab lists all OBS scenes under **Scenes**. A click switches to th
 
 The scene switches while the screen is fully covered, so viewers never see the cut. The selected transition is also used for Stream Starting Soon, Be Right Back and Stream Ending. **Test transition** plays it once without switching scenes.
 
-The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.11.1 the scenes only appear once OBS has been restarted.
+The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.12.0 the scenes only appear once OBS has been restarted.
 
 **In OBS itself:** **GVL Swipe** and **GVL Swipe Fast** are also listed under **Scene Transitions** as stinger videos. Pick one and it plays on every scene change, including clicks on a scene, Studio Mode and hotkeys. Team colours are only available in the panel because the videos have fixed colours. After updating from the panel, both transitions appear once OBS has been closed and opened again.
+
+## Social media
+
+Enter your Instagram, Twitch, TikTok and YouTube channels under **Social media** in the **Stream** tab. A missing `@` is added automatically.
+
+- **Lower third:** Follow Us with all channels for 9 seconds.
+- **Corner on:** One channel at a time at the bottom left, switching every 7 seconds. The corner hides while a lower third or a full-screen graphic is shown.
+- Stream Starting Soon, Be Right Back and Stream Ending list the channels at the bottom automatically.
 
 ## Replays
 

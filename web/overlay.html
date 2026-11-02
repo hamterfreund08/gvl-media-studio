@@ -72,7 +72,27 @@ img { display: block; }
 .next .mid b { font-size: 52px; font-weight: 900; line-height: 1; }
 .next .mid small { margin-top: 8px; font-size: 18px; font-weight: 700; color: #55555c; }
 .next .mid small + small { margin-top: 3px; }
-.voices { position: absolute; bottom: 44px; font-size: 24px; font-weight: 700; color: var(--light); text-transform: none; }
+.footer { position: absolute; left: 0; right: 0; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.voices { font-size: 24px; font-weight: 700; color: var(--light); text-transform: none; }
+.follow { display: flex; gap: 16px; }
+.follow div { display: flex; height: 46px; box-shadow: 0 8px 22px rgba(0, 0, 0, .35); }
+.follow span, #social span, .third .socials span { display: flex; align-items: center; justify-content: center; padding: 0 16px; font-size: 16px; letter-spacing: 2px; color: #fff; }
+.follow b { display: flex; align-items: center; padding: 0 18px; background: var(--white); color: var(--ink); font-size: 22px; font-weight: 900; text-transform: none; white-space: nowrap; }
+.third .socials { flex: 1; display: grid; grid-template-columns: auto auto; gap: 10px 30px; align-content: center; justify-content: start; padding: 0 24px; }
+.third .socials div { display: flex; align-items: center; height: 44px; }
+.third .socials span { height: 100%; min-width: 132px; }
+.third .socials b { padding-left: 14px; font-size: 27px; font-weight: 900; text-transform: none; white-space: nowrap; }
+#social { position: absolute; left: 40px; bottom: 62px; height: 60px; display: none; transition: opacity .3s; }
+#social.on { display: flex; }
+#cover:not(:empty) ~ #social, #lower:not(:empty) ~ #social { opacity: 0; }
+#social .card { display: flex; height: 100%; box-shadow: 0 10px 28px rgba(0, 0, 0, .4); animation: socialIn .55s var(--ease) both; }
+#social .card.out { animation: socialOut .35s cubic-bezier(.7, 0, .84, 0) both; }
+#social .logo { width: 60px; display: flex; align-items: center; justify-content: center; background: var(--accent); }
+#social .logo img { width: 42px; height: 42px; object-fit: contain; }
+#social span { padding: 0 18px; font-size: 17px; }
+#social b { display: flex; align-items: center; padding: 0 22px; background: var(--white); color: var(--ink); font-size: 27px; font-weight: 900; text-transform: none; white-space: nowrap; }
+@keyframes socialIn { from { clip-path: inset(0 100% 0 0); transform: translateX(-20px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+@keyframes socialOut { to { clip-path: inset(0 0 0 100%); transform: translateX(20px); } }
 .voices b { color: var(--white); font-weight: 900; }
 
 #plan { left: 300px; width: 1320px; }
@@ -228,6 +248,7 @@ img { display: block; }
 <div id="cover"></div>
 <div id="full"></div>
 <div id="lower"></div>
+<div id="social"></div>
 <div id="ticker"></div>
 <div id="stinger"><div class="sb sb1"></div><div class="sb sb2"></div><div class="sb sb3"></div><div class="sc" id="stingerCenter"></div></div>
 <script>
@@ -235,6 +256,7 @@ const full = document.getElementById("full");
 const lower = document.getElementById("lower");
 const cover = document.getElementById("cover");
 const ticker = document.getElementById("ticker");
+const social = document.getElementById("social");
 const ACCENT = "#d20515";
 const POSITIONS = ["GK", "CB", "LW", "RW", "ST"];
 const POSITION_TITLES = { GK: "Goalkeeper", CB: "Defender", WING: "Wingers", ST: "Striker" };
@@ -266,7 +288,12 @@ let tickerGraphic = null;
 let tickerShown = "";
 let loaded = false;
 let version = null;
-const STREAM_KINDS = ["starting", "brb", "ending", "plan", "commentators", "custom", "clip"];
+const STREAM_KINDS = ["starting", "brb", "ending", "plan", "commentators", "custom", "clip", "socials"];
+const PLATFORMS = [["instagram", "Instagram", "#c13584"], ["twitch", "Twitch", "#9146ff"], ["tiktok", "TikTok", "#000000"], ["youtube", "YouTube", "#e00000"]];
+const SOCIAL_STEP_MS = 7000;
+const SOCIAL_OUT_MS = 350;
+let socialTimer = null;
+let socialIndex = 0;
 const GVL_LOGO = "/media/assets/gvl_logo.png";
 const CLIP_MARGIN_SECONDS = 2;
 const CLIP_MAX_SECONDS = 90;
@@ -331,6 +358,23 @@ function voicesHtml() {
   const names = voices();
   return names.length ? `<div class="voices">Commentary: <b>${names.map(esc).join("</b> &amp; <b>")}</b></div>` : "";
 }
+function handleText(value) {
+  const text = String(value).trim();
+  return /^@|[\/\s.]/.test(text) ? text : "@" + text;
+}
+function socialList() {
+  const saved = settings.socials || {};
+  return PLATFORMS.filter(([key]) => String(saved[key] || "").trim()).map(([key, label, color]) => ({ label, color, handle: handleText(saved[key]) }));
+}
+function socialItem(p) {
+  return `<div><span style="background:${p.color}">${esc(p.label)}</span><b>${esc(p.handle)}</b></div>`;
+}
+function footerHtml() {
+  const list = socialList();
+  const follow = list.length ? `<div class="follow">${list.map(socialItem).join("")}</div>` : "";
+  const inner = voicesHtml() + follow;
+  return inner ? `<div class="footer">${inner}</div>` : "";
+}
 function clockText(target) {
   const left = Math.max(0, Math.round((target - Date.now()) / 1000));
   const hours = Math.floor(left / 3600);
@@ -351,10 +395,10 @@ const screens = {
     const game = nextGame();
     const target = graphic.until || (game && game.kickoff ? game.kickoff * 1000 : 0);
     return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Stream Starting Soon</h1>
-      ${target ? '<div class="clock" id="clock"></div>' : ""}${nextCard(game, "Next Up")}${voicesHtml()}</div>`, target];
+      ${target ? '<div class="clock" id="clock"></div>' : ""}${nextCard(game, "Next Up")}${footerHtml()}</div>`, target];
   },
   brb() {
-    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Be Right Back</h1><div class="strap">The stream will continue shortly</div>${voicesHtml()}</div>`, 0];
+    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Be Right Back</h1><div class="strap">The stream will continue shortly</div>${footerHtml()}</div>`, 0];
   },
   clip(graphic) {
     const label = (graphic.rate || 1) < 1 ? "Slow Motion" : "Replay";
@@ -364,7 +408,7 @@ const screens = {
   },
   ending() {
     const game = plan.find(g => g.kickoff * 1000 > Date.now() + 600000);
-    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Thanks For Watching</h1><div class="strap">German Virtual League</div>${nextCard(game, "Next On Stream")}${voicesHtml()}</div>`, 0];
+    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Thanks For Watching</h1><div class="strap">German Virtual League</div>${nextCard(game, "Next On Stream")}${footerHtml()}</div>`, 0];
   },
 };
 
@@ -546,6 +590,9 @@ function plainThird(tag, body) {
 const lowers = {
   commentators() {
     return plainThird(voices().length > 1 ? "Commentators" : "Commentator", `<div class="voice">${voices().map(n => `<span>${esc(n)}</span>`).join("")}</div>`);
+  },
+  socials() {
+    return plainThird("Follow Us", `<div class="socials">${socialList().map(socialItem).join("")}</div>`);
   },
   custom(g) {
     return plainThird(g.tag || "GVL", `<div class="big">${esc(g.title)}</div>${g.subtitle ? `<div class="sub">${esc(g.subtitle)}</div>` : ""}`);
@@ -777,6 +824,29 @@ function renderTicker(graphic) {
   ticker.innerHTML = `<div class="badge" style="${content.style}"><img src="${esc(content.logo)}" alt="">${esc(content.badge)}</div><div class="track"><span style="animation-duration:${seconds}s">${esc(content.text)}</span></div>`;
 }
 
+function socialCard(p) {
+  return `<div class="card"><div class="logo"><img src="${GVL_LOGO}" alt=""></div><span style="background:${p.color}">${esc(p.label)}</span><b>${esc(p.handle)}</b></div>`;
+}
+function socialStep() {
+  const list = socialList();
+  if (!list.length) { social.innerHTML = ""; return; }
+  const next = socialCard(list[socialIndex++ % list.length]);
+  const old = social.firstElementChild;
+  if (old && old.outerHTML === next) return;
+  if (!old) { social.innerHTML = next; return; }
+  old.classList.add("out");
+  setTimeout(() => { if (social.classList.contains("on")) social.innerHTML = next; }, SOCIAL_OUT_MS);
+}
+function renderSocial(graphic) {
+  clearInterval(socialTimer);
+  social.classList.toggle("on", !!graphic);
+  social.innerHTML = "";
+  if (!graphic) return;
+  socialIndex = 0;
+  socialStep();
+  socialTimer = setInterval(socialStep, SOCIAL_STEP_MS);
+}
+
 async function showFull(graphic, instant) {
   if (screens[graphic.kind]) {
     showingFull = graphic;
@@ -828,10 +898,12 @@ function apply(message) {
     if (message.action === "transition" && message.graphic) runTransition(message.graphic);
     if (message.action === "show") {
       if (message.slot === "ticker") renderTicker(message.graphic);
+      else if (message.slot === "social") renderSocial(message.graphic);
       else (message.slot === "full" ? showFull : showLower)(message.graphic);
     }
     if (message.action === "hide") {
       if (message.slot === "ticker") { renderTicker(null); return; }
+      if (message.slot === "social") { renderSocial(null); return; }
       if (message.slot !== "lower") { hideCover(); hideFull(); }
       if (message.slot !== "full") hideLower();
     }
@@ -854,6 +926,7 @@ function apply(message) {
     if (message.visible.full) showFull(message.visible.full, true);
     if (message.visible.lower) showLower(message.visible.lower);
     renderTicker(message.visible.ticker);
+    renderSocial(message.visible.social);
   } else if (tickerGraphic) {
     renderTicker(tickerGraphic);
   }

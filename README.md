@@ -132,9 +132,17 @@ Im Reiter **Stream** stehen unter **Szenen** alle Szenen aus OBS. Ein Klick wech
 
 Gewechselt wird, während das Bild ganz bedeckt ist. Der Zuschauer sieht keinen Schnitt. Der ausgewählte Übergang gilt auch für Stream Starting Soon, Gleich zurück und Stream-Ende. Mit **Übergang testen** läuft er einmal ohne Szenenwechsel.
 
-Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.11.1 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.12.0 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
 
 **In OBS selbst:** Unter **Szenenübergänge** stehen außerdem **GVL Swipe** und **GVL Swipe Fast** als Stinger-Videos. Wählst du einen davon aus, läuft er bei jedem Szenenwechsel, auch beim Klick auf eine Szene, im Studio-Modus und mit Hotkeys. Teamfarben gibt es nur im Panel, weil die Videos feste Farben haben. Nach einem Update aus dem Panel heraus erscheinen die beiden Übergänge, sobald OBS einmal geschlossen und wieder geöffnet wurde.
+
+## Social Media
+
+Im Reiter **Stream** unter **Social Media** trägst du die Kanäle für Instagram, Twitch, TikTok und YouTube ein. Ohne `@` wird es automatisch ergänzt.
+
+- **Bauchbinde:** „Follow Us“ mit allen Kanälen für 9 Sekunden.
+- **Ecke an:** Unten links erscheint immer ein Kanal und wechselt alle 7 Sekunden zum nächsten. Während einer Bauchbinde oder eines Vollbilds blendet sich die Ecke kurz aus.
+- Auf Stream Starting Soon, Gleich zurück und Stream-Ende stehen die Kanäle automatisch unten.
 
 ## Replays
 

@@ -69,6 +69,8 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
 .top small { color: var(--muted); font-size: 11px; font-weight: 600; }
 #update { border-color: var(--warn); }
 #update .hint { text-align: left; }
+.social-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.social-row button { padding: 7px 12px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -168,12 +170,12 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
 
   <section>
     <h2>Social Media</h2>
-    <input type="text" data-social="instagram" maxlength="40" placeholder="Instagram (@name)" aria-label="Instagram">
-    <input type="text" data-social="twitch" maxlength="40" placeholder="Twitch (@name)" aria-label="Twitch">
-    <input type="text" data-social="tiktok" maxlength="40" placeholder="TikTok (@name)" aria-label="TikTok">
-    <input type="text" data-social="youtube" maxlength="40" placeholder="YouTube (@name)" aria-label="YouTube">
+    <div class="social-row"><input type="text" data-social="instagram" maxlength="40" placeholder="Instagram (@name)" aria-label="Instagram"><button data-lower="social" data-platform="instagram">Zeigen</button></div>
+    <div class="social-row"><input type="text" data-social="twitch" maxlength="40" placeholder="Twitch (@name)" aria-label="Twitch"><button data-lower="social" data-platform="twitch">Zeigen</button></div>
+    <div class="social-row"><input type="text" data-social="tiktok" maxlength="40" placeholder="TikTok (@name)" aria-label="TikTok"><button data-lower="social" data-platform="tiktok">Zeigen</button></div>
+    <div class="social-row"><input type="text" data-social="youtube" maxlength="40" placeholder="YouTube (@name)" aria-label="YouTube"><button data-lower="social" data-platform="youtube">Zeigen</button></div>
     <div class="two">
-      <button data-lower="socials" id="socialBtn">Bauchbinde</button>
+      <button data-lower="socials" id="socialBtn">Alle zeigen</button>
       <button id="socialBug">Ecke an</button>
     </div>
     <div class="hint">Die Ecke wechselt unten links alle 7 Sekunden zum nächsten Kanal. Die Kanäle stehen auch auf den Bildschirmen.</div>
@@ -311,7 +313,7 @@ const EN = {
   "Cloudflare hat nicht geantwortet. Bitte erneut versuchen.": "Cloudflare did not respond. Please try again.",
   "Szenen": "Scenes", "Übergang": "Transition", "Teamfarben": "Team colours", "Harter Schnitt": "Hard cut",
   "Die Szenen erscheinen nach einem Neustart von OBS.": "The scenes appear after restarting OBS.", "Übergang testen": "Test transition",
-  "Social Media": "Social media", "Bauchbinde": "Lower third", "Ecke an": "Corner on", "Ecke aus": "Corner off",
+  "Social Media": "Social media", "Zeigen": "Show", "Alle zeigen": "Show all", "Ecke an": "Corner on", "Ecke aus": "Corner off",
   "Die Ecke wechselt unten links alle 7 Sekunden zum nächsten Kanal. Die Kanäle stehen auch auf den Bildschirmen.": "The corner switches to the next channel every 7 seconds at the bottom left. The channels also appear on the screens.",
   "Jetzt aktualisieren": "Update now", "App öffnen": "Open app", "Erneut versuchen": "Try again", "Auf GitHub öffnen": "Open on GitHub", "Ausblenden": "Dismiss",
   "Version {new} ist da, du hast {old}.": "Version {new} is available, you have {old}.",
@@ -514,7 +516,7 @@ function renderButtons() {
   });
   document.querySelectorAll("[data-lower]").forEach(b => {
     const g = visible.lower;
-    b.classList.toggle("on", !!g && g.kind === b.dataset.lower && (!b.dataset.team || g.team === b.dataset.team));
+    b.classList.toggle("on", !!g && g.kind === b.dataset.lower && (!b.dataset.team || g.team === b.dataset.team) && (!b.dataset.platform || g.platform === b.dataset.platform));
   });
   const textTicker = !!visible.ticker && visible.ticker.kind === "ticker";
   $("tickerBtn").classList.toggle("on", textTicker);
@@ -534,6 +536,7 @@ function renderSettings() {
   document.querySelectorAll("[data-social]").forEach(input => { if (document.activeElement !== input) input.value = socials[input.dataset.social] || ""; });
   const anySocial = Object.values(socials).some(v => String(v).trim());
   $("socialBtn").disabled = !anySocial;
+  document.querySelectorAll("[data-platform]").forEach(b => { b.disabled = !String(socials[b.dataset.platform] || "").trim(); });
   $("socialBug").disabled = !anySocial && !visible.social;
 }
 
@@ -678,6 +681,7 @@ document.querySelectorAll("[data-lower]").forEach(button => {
     if (button.classList.contains("on")) return send({ action: "hide", slot: "lower" });
     const graphic = { kind: button.dataset.lower, seconds: button.dataset.lower === "bar" ? 0 : 9 };
     if (button.dataset.team) graphic.team = button.dataset.team;
+    if (button.dataset.platform) graphic.platform = button.dataset.platform;
     send({ action: "show", slot: "lower", graphic });
   };
 });
@@ -706,6 +710,7 @@ document.querySelectorAll("[data-social]").forEach(input => {
     saveSettings({ socials: values });
     const any = Object.values(values).some(v => v.trim());
     $("socialBtn").disabled = !any;
+    document.querySelectorAll("[data-platform]").forEach(b => { b.disabled = !String(values[b.dataset.platform] || "").trim(); });
     $("socialBug").disabled = !any && !visible.social;
   };
 });

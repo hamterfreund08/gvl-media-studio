@@ -140,7 +140,8 @@ Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das 
 
 Im Reiter **Stream** unter **Social Media** trägst du die Kanäle für Instagram, Twitch, TikTok und YouTube ein. Ohne `@` wird es automatisch ergänzt.
 
-- **Bauchbinde:** „Follow Us“ mit allen Kanälen und ihren Logos für 9 Sekunden.
+- **Zeigen** neben einem Kanal: Bauchbinde nur für diesen Kanal, mit großem Logo und „Follow us on …“.
+- **Alle zeigen:** „Follow Us“ mit allen Kanälen und ihren Logos für 9 Sekunden.
 - **Ecke an:** Unten links erscheint immer ein Kanal und wechselt alle 7 Sekunden zum nächsten. Während einer Bauchbinde oder eines Vollbilds blendet sich die Ecke kurz aus.
 - Auf Stream Starting Soon, Gleich zurück und Stream-Ende stehen die Kanäle automatisch unten.
 

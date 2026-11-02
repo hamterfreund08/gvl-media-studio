@@ -140,7 +140,8 @@ The overlay source has to be on top in every scene. When switching from the dock
 
 Enter your Instagram, Twitch, TikTok and YouTube channels under **Social media** in the **Stream** tab. A missing `@` is added automatically.
 
-- **Lower third:** Follow Us with all channels and their logos for 9 seconds.
+- **Show** next to a channel: a lower third for just that channel with a large logo and Follow us on ….
+- **Show all:** Follow Us with all channels and their logos for 9 seconds.
 - **Corner on:** One channel at a time at the bottom left, switching every 7 seconds. The corner hides while a lower third or a full-screen graphic is shown.
 - Stream Starting Soon, Be Right Back and Stream Ending list the channels at the bottom automatically.
 

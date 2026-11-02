@@ -92,6 +92,24 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
   <button data-tab="plan">Plan</button>
 </div>
 
+<div data-page="stream" style="display:contents">
+  <section>
+    <h2>Szenen</h2>
+    <div class="row">
+      <label for="transitionStyle">Übergang</label>
+      <select id="transitionStyle" style="width:170px">
+        <option value="gvl">GVL Stinger</option>
+        <option value="fast">Schnell</option>
+        <option value="team">Teamfarben</option>
+        <option value="cut">Harter Schnitt</option>
+      </select>
+    </div>
+    <div class="two" id="scenes"></div>
+    <div class="hint" id="scenesHint">Die Szenen erscheinen nach einem Neustart von OBS.</div>
+    <button id="testTransition">Übergang testen</button>
+  </section>
+</div>
+
 <div data-page="stream">
   <section>
     <h2>Bildschirme</h2>
@@ -278,6 +296,8 @@ const EN = {
   "Noch keine Clips gespeichert.": "No clips saved yet.", "Zeitlupe": "Slow motion", "Alle Wettbewerbe": "All competitions", "Videos-Ordner": "Videos folder",
   "Der Tunnel wurde beendet. Bitte neu starten.": "The tunnel stopped. Please start it again.", "cloudflared.exe fehlt. Bitte neu installieren.": "cloudflared.exe is missing. Please reinstall.",
   "Cloudflare hat nicht geantwortet. Bitte erneut versuchen.": "Cloudflare did not respond. Please try again.",
+  "Szenen": "Scenes", "Übergang": "Transition", "GVL Stinger": "GVL stinger", "Schnell": "Fast", "Teamfarben": "Team colours", "Harter Schnitt": "Hard cut",
+  "Die Szenen erscheinen nach einem Neustart von OBS.": "The scenes appear after restarting OBS.", "Übergang testen": "Test transition",
   "Jetzt aktualisieren": "Update now", "App öffnen": "Open app", "Erneut versuchen": "Try again", "Auf GitHub öffnen": "Open on GitHub", "Ausblenden": "Dismiss",
   "Version {new} ist da, du hast {old}.": "Version {new} is available, you have {old}.",
   "Lade sie auf GitHub herunter und installiere sie wie gewohnt.": "Download it on GitHub and install it as usual.",
@@ -543,10 +563,29 @@ function renderReplay(clips) {
     label.title = clip.time;
     normal.textContent = "Normal";
     slow.textContent = t("Zeitlupe");
-    normal.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 1, seconds: 0 } });
-    slow.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 0.5, seconds: 0 } });
+    const title = clip.name.startsWith("Tor:") ? clip.name.slice(4).trim() : "";
+    normal.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 1, seconds: 0, title } });
+    slow.onclick = () => send({ action: "show", slot: "full", graphic: { kind: "clip", id: clip.id, rate: 0.5, seconds: 0, title } });
     row.append(label, normal, slow);
     $("clips").append(row);
+  });
+}
+
+function renderScenes(scenes, current) {
+  const style = settings.transition || "gvl";
+  if (document.activeElement !== $("transitionStyle")) $("transitionStyle").value = style;
+  $("scenesHint").hidden = scenes.length > 0;
+  $("testTransition").disabled = style === "cut";
+  const key = JSON.stringify([scenes, current]);
+  if ($("scenes").dataset.key === key) return;
+  $("scenes").dataset.key = key;
+  $("scenes").innerHTML = "";
+  scenes.forEach(name => {
+    const button = document.createElement("button");
+    button.textContent = name;
+    button.classList.toggle("on", name === current);
+    button.onclick = () => { if (name !== current) send({ action: "transition", scene: name, style: $("transitionStyle").value }); };
+    $("scenes").append(button);
   });
 }
 
@@ -579,6 +618,7 @@ function apply(message) {
       loadGames().catch(e => console.warn(e));
     }
     renderReplay(message.clips || []);
+    renderScenes(message.scenes || [], message.scene || "");
     renderTunnel(message.tunnel);
     tunnelState = message.tunnel.state;
     $("version").textContent = version;
@@ -665,6 +705,11 @@ $("motmBtn").onclick = () => {
     if (player) return send({ action: "show", slot: "lower", graphic: { kind: "motm", team, player, seconds: 12 } });
   }
 };
+$("transitionStyle").onchange = () => {
+  send({ action: "settings", values: { transition: $("transitionStyle").value } });
+  $("testTransition").disabled = $("transitionStyle").value === "cut";
+};
+$("testTransition").onclick = () => send({ action: "transition", style: $("transitionStyle").value, scene: "" });
 $("openApp").onclick = () => send({ action: "openApp" });
 $("updateBtn").onclick = () => send({ action: "update" });
 $("releaseBtn").onclick = () => send({ action: "openRelease" });

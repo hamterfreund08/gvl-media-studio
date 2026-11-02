@@ -38,7 +38,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 HOST = "127.0.0.1"
 PORT = 40231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
@@ -49,8 +49,10 @@ THUMB_ASSETS = "https://thumbnails.roblox.com/v1/assets?assetIds={}&size=420x420
 THUMB_AVATARS = "https://thumbnails.roblox.com/v1/users/avatar?userIds={}&size=720x720&format=Png&isCircular=false"
 
 DATA_KEYS = ("league", "teams", "matches", "standings", "games", "top")
-DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de"}
+DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de", "transition": "gvl"}
 REPLAY_SECONDS = (10, 20, 30)
+TRANSITIONS = ("gvl", "fast", "team", "cut")
+CUT_FALLBACK = 3
 MAX_CLIPS = 8
 CLIP_RATES = (0.5, 1)
 GOAL_CLIP_DELAY = 5
@@ -119,6 +121,9 @@ class Studio:
         self.clients = set()
         self.tunnel = {"state": "off", "link": "", "message": ""}
         self.update = dict(NO_UPDATE)
+        self.scenes = []
+        self.scene = ""
+        self.pending_cut = None
 
     def status(self):
         return {"linked": bool(self.job), "stale": self.stale, "by": self.by}
@@ -126,7 +131,7 @@ class Studio:
     def message(self, kind="state"):
         return {"type": kind, "version": VERSION, "status": self.status(), "tunnel": self.tunnel, "match": self.match, "visible": self.visible,
                 "auto": self.auto, "assets": assets_for(self.match), "events": self.events[-8:],
-                "settings": self.settings, "plan": self.plan, "results": self.results, "buffer": self.buffer, "dataStamp": self.data_stamp,
+                "settings": self.settings, "scenes": self.scenes, "scene": self.scene, "plan": self.plan, "results": self.results, "buffer": self.buffer, "dataStamp": self.data_stamp,
                 "clips": [{k: c[k] for k in ("id", "name", "time")} for c in self.clips],
                 "update": {**{k: v for k, v in self.update.items() if k != "url"}, "download": bool(self.update["url"])}}
 
@@ -535,6 +540,12 @@ async def command(request):
         background.append(asyncio.create_task(run_update()))
     elif action == "openRelease" and studio.update["page"].startswith("https://github.com/"):
         os.startfile(studio.update["page"])
+    elif action == "transition" and data.get("style") in TRANSITIONS and (not data.get("scene") or data.get("scene") in studio.scenes):
+        start_transition(data["style"], data.get("scene") or "")
+        return web.json_response({"ok": True})
+    elif action == "cut":
+        take_cut(str(data.get("id") or ""))
+        return web.json_response({"ok": True})
     elif action == "openApp" and getattr(sys, "frozen", False):
         updater.launch(os.path.join(EXE_DIR, installer.REQUIRED_FILES[0]), "--app")
     elif action == "updateSeen" and studio.update["state"] == "done":
@@ -632,8 +643,33 @@ def open_folder():
 
 
 def replay_command(command):
-    with open(REPLAY_CMD_FILE, "w", encoding="utf-8") as f:
+    with open(REPLAY_CMD_FILE, "a", encoding="utf-8") as f:
         f.write(command + "\n")
+
+
+def start_transition(style, scene):
+    if style == "cut":
+        if scene:
+            replay_command(f"scene|{scene}")
+        return
+    cut_id = secrets.token_hex(4)
+    studio.pending_cut = (cut_id, scene) if scene else None
+    studio.send({"type": "command", "action": "transition", "graphic": {"id": cut_id, "style": style, "scene": scene}})
+    if scene:
+        background.append(asyncio.create_task(cut_fallback(cut_id)))
+        del background[:-20]
+
+
+def take_cut(cut_id):
+    if studio.pending_cut and studio.pending_cut[0] == cut_id:
+        scene = studio.pending_cut[1]
+        studio.pending_cut = None
+        replay_command(f"scene|{scene}")
+
+
+async def cut_fallback(cut_id):
+    await asyncio.sleep(CUT_FALLBACK)
+    take_cut(cut_id)
 
 
 def save_clip(label):
@@ -676,6 +712,12 @@ async def watch_replay():
         for line in lines:
             if line in ("started", "stopped"):
                 studio.buffer = line == "started"
+                studio.broadcast()
+            elif line.startswith("scenes|"):
+                studio.scenes = [name for name in line.split("|", 1)[1].split("\t") if name]
+                studio.broadcast()
+            elif line.startswith("current|"):
+                studio.scene = line.split("|", 1)[1]
                 studio.broadcast()
             elif line.startswith("saved|"):
                 await store_clip(line.split("|", 1)[1])

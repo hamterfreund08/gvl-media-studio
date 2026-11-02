@@ -121,6 +121,19 @@ Der Link gilt, solange der Tunnel läuft. Startest du den Tunnel neu, klickst du
 
 Mit **Alles ausblenden** räumst du das Bild jederzeit frei.
 
+## Szenen und Übergänge
+
+Im Reiter **Stream** stehen unter **Szenen** alle Szenen aus OBS. Ein Klick wechselt dorthin, mit dem Übergang, der darüber ausgewählt ist:
+
+- **GVL Stinger:** Weiße, rote und dunkle Bänder wischen schräg durchs Bild, in der Mitte das GVL-Logo.
+- **Schnell:** Derselbe Wischer, kürzer, für schnelle Wechsel.
+- **Teamfarben:** Bänder in den Farben beider Teams, in der Mitte die Wappen. Ohne verbundenes Spiel wird es der GVL Stinger.
+- **Harter Schnitt:** Direkter Wechsel ohne Animation.
+
+Gewechselt wird, während das Bild ganz bedeckt ist. Der Zuschauer sieht keinen Schnitt. Der ausgewählte Übergang gilt auch für Stream Starting Soon, Gleich zurück und Stream-Ende. Mit **Übergang testen** läuft er einmal ohne Szenenwechsel.
+
+Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.10.0 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+
 ## Replays
 
 **Replay im Spiel** nutzt das 3D-Replay von Roblox und läuft nur auf deinem Bildschirm. Du startest es im Panel, im Media-Fenster im Spiel oder mit der Taste `F8`. Es speichert bis zu 30 Sekunden. Im Replay erscheinen nur Spieler, die auf dem Platz waren.

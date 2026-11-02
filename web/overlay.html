@@ -33,9 +33,30 @@ img { display: block; }
 .screen.clip { background: #000; }
 .screen.clip::before, .screen.clip::after { display: none; }
 .screen.clip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.screen.clip .mark { position: absolute; top: 44px; right: 54px; padding: 10px 28px; background: var(--accent); font-size: 38px; font-weight: 900; letter-spacing: 3px; animation: pulse 1.6s infinite; }
-.screen.clip .wipe { position: absolute; inset: 0; background: var(--accent); transform: translateX(100%); animation: wipe .75s cubic-bezier(.7, 0, .3, 1) both; z-index: 5; }
-@keyframes wipe { 0% { transform: translateX(-100%); } 45%, 55% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+.rbug { position: absolute; top: 52px; left: 60px; height: 64px; display: flex; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: bugIn .5s .25s var(--ease) both; }
+.rbug .rl { width: 64px; display: flex; align-items: center; justify-content: center; background: var(--accent); }
+.rbug .rl img { width: 46px; height: 46px; object-fit: contain; }
+.rbug .rt { display: flex; align-items: center; padding: 0 26px; background: var(--white); color: var(--ink); font-size: 30px; font-weight: 900; letter-spacing: 5px; }
+.rbug .rt i { width: 12px; height: 12px; margin-right: 16px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; }
+@keyframes bugIn { from { clip-path: inset(0 100% 0 0); transform: translateX(-24px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+.rgoal { position: absolute; left: 60px; bottom: 74px; height: 58px; display: flex; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: bugIn .5s .45s var(--ease) both; }
+.rgoal span { display: flex; align-items: center; padding: 0 22px; background: var(--accent); font-size: 24px; letter-spacing: 3px; }
+.rgoal b { display: flex; align-items: center; padding: 0 26px; background: var(--white); color: var(--ink); font-size: 30px; font-weight: 900; text-transform: none; }
+.rprog { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: rgba(0, 0, 0, .45); }
+.rprog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
+
+#stinger { position: absolute; inset: 0; z-index: 50; overflow: hidden; pointer-events: none; visibility: hidden; }
+#stinger.on { visibility: visible; }
+#stinger .sb { position: absolute; top: -120px; left: 0; width: 2700px; height: 1320px; transform: translateX(-3100px) skewX(-18deg); will-change: transform; }
+#stinger .sb3 { background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 2px, transparent 2px 48px), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(0, 0, 0, .25)); }
+#stinger .sc { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; opacity: 0; }
+#stinger .sc .slogo { width: 220px; height: 220px; object-fit: contain; filter: drop-shadow(0 14px 30px rgba(0, 0, 0, .45)); }
+#stinger .sc.small .slogo { width: 150px; height: 150px; }
+#stinger .sline { height: 6px; width: 0; margin-top: 26px; background: var(--accent); }
+#stinger .slabel { margin-top: 22px; padding: 10px 34px; background: var(--white); color: var(--ink); font-size: 40px; font-weight: 900; letter-spacing: 9px; }
+#stinger .scrests { display: flex; align-items: center; gap: 46px; }
+#stinger .scrests img { width: 210px; height: 210px; object-fit: contain; filter: drop-shadow(0 14px 30px rgba(0, 0, 0, .45)); }
+#stinger .scrests .sdiv { width: 6px; height: 170px; background: var(--white); transform: skewX(-18deg); }
 .screen .logo { height: 104px; margin-bottom: 26px; }
 .screen h1 { font-size: 92px; font-weight: 900; line-height: 1; letter-spacing: 1px; text-align: center; }
 .screen .strap { margin-top: 18px; font-size: 28px; font-weight: 700; color: var(--light); text-align: center; }
@@ -207,6 +228,7 @@ img { display: block; }
 <div id="full"></div>
 <div id="lower"></div>
 <div id="ticker"></div>
+<div id="stinger"><div class="sb sb1"></div><div class="sb sb2"></div><div class="sb sb3"></div><div class="sc" id="stingerCenter"></div></div>
 <script>
 const full = document.getElementById("full");
 const lower = document.getElementById("lower");
@@ -327,18 +349,21 @@ const screens = {
   starting(graphic) {
     const game = nextGame();
     const target = graphic.until || (game && game.kickoff ? game.kickoff * 1000 : 0);
-    return [`<div class="screen enter"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Stream Starting Soon</h1>
+    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Stream Starting Soon</h1>
       ${target ? '<div class="clock" id="clock"></div>' : ""}${nextCard(game, "Next Up")}${voicesHtml()}</div>`, target];
   },
   brb() {
-    return [`<div class="screen enter"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Be Right Back</h1><div class="strap">The stream will continue shortly</div>${voicesHtml()}</div>`, 0];
+    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Be Right Back</h1><div class="strap">The stream will continue shortly</div>${voicesHtml()}</div>`, 0];
   },
   clip(graphic) {
-    return [`<div class="screen enter clip"><video id="clipVideo" src="/media/clip/${esc(graphic.id)}?play=${Date.now()}" muted autoplay playsinline></video><div class="mark">REPLAY</div><div class="wipe"></div></div>`, 0];
+    const label = (graphic.rate || 1) < 1 ? "Slow Motion" : "Replay";
+    const goal = graphic.title ? `<div class="rgoal"><span>Goal</span><b>${esc(graphic.title)}</b></div>` : "";
+    return [`<div class="screen clip"><video id="clipVideo" src="/media/clip/${esc(graphic.id)}?play=${Date.now()}" muted playsinline preload="auto"></video>
+      <div class="rbug"><div class="rl"><img src="${GVL_LOGO}" alt=""></div><div class="rt"><i></i>${label}</div></div>${goal}<div class="rprog"><i id="clipProgress"></i></div></div>`, 0];
   },
   ending() {
     const game = plan.find(g => g.kickoff * 1000 > Date.now() + 600000);
-    return [`<div class="screen enter"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Thanks For Watching</h1><div class="strap">German Virtual League</div>${nextCard(game, "Next On Stream")}${voicesHtml()}</div>`, 0];
+    return [`<div class="screen"><img class="logo" src="${GVL_LOGO}" alt=""><h1>Thanks For Watching</h1><div class="strap">German Virtual League</div>${nextCard(game, "Next On Stream")}${voicesHtml()}</div>`, 0];
   },
 };
 
@@ -570,6 +595,117 @@ const lowers = {
   },
 };
 
+const stinger = document.getElementById("stinger");
+const stingerCenter = document.getElementById("stingerCenter");
+const BANDS = [...stinger.querySelectorAll(".sb")];
+const BAND_EASE = "cubic-bezier(.77, 0, .18, 1)";
+const BAND_OFF_LEFT = -3100;
+const BAND_COVER = -390;
+const BAND_OFF_RIGHT = 2300;
+const STINGER_DARK = "#232326";
+const STINGERS = {
+  gvl: { move: 540, stagger: 75, hold: 520, center: "logo" },
+  fast: { move: 340, stagger: 45, hold: 220, center: "small" },
+  team: { move: 560, stagger: 80, hold: 600, center: "teams" },
+};
+const CLIP_READY_MAX_MS = 3000;
+let stingerStyle = STINGERS.gvl;
+let coveredAt = 0;
+let chain = Promise.resolve();
+
+function queue(job) {
+  chain = chain.then(job).catch(e => console.warn(e));
+  return chain;
+}
+function bandFrames(from, to) {
+  return [{ transform: `translateX(${from}px) skewX(-18deg)` }, { transform: `translateX(${to}px) skewX(-18deg)` }];
+}
+function stingerColors(name) {
+  if (name === "team" && match) return [teamColor(match.away), teamColor(match.home), STINGER_DARK];
+  return ["#ffffff", ACCENT, STINGER_DARK];
+}
+function stingerContent(name, label) {
+  if (name === "team" && match) {
+    return `<div class="scrests"><img src="${esc(logoUrl(match.home))}" alt=""><div class="sdiv"></div><img src="${esc(logoUrl(match.away))}" alt=""></div><div class="sline"></div>`;
+  }
+  return `<img class="slogo" src="${GVL_LOGO}" alt="">${label ? `<div class="slabel">${esc(label)}</div>` : '<div class="sline"></div>'}`;
+}
+async function coverStinger(name, label) {
+  const style = STINGERS[name] || STINGERS.gvl;
+  const styleName = STINGERS[name] ? name : "gvl";
+  stingerStyle = style;
+  stingerColors(styleName).forEach((color, i) => { BANDS[i].style.backgroundColor = color; });
+  stingerCenter.className = "sc" + (style.center === "small" ? " small" : "");
+  stingerCenter.innerHTML = stingerContent(styleName, label);
+  stingerCenter.getAnimations().forEach(a => a.cancel());
+  BANDS.forEach(band => band.getAnimations().forEach(a => a.cancel()));
+  stinger.classList.add("on");
+  await Promise.all(BANDS.map((band, i) => band.animate(bandFrames(BAND_OFF_LEFT, BAND_COVER),
+    { duration: style.move, delay: i * style.stagger, easing: BAND_EASE, fill: "forwards" }).finished));
+  coveredAt = Date.now();
+  stingerCenter.animate([{ opacity: 0, transform: "translate(-50%, -50%) scale(.84)" }, { opacity: 1, transform: "translate(-50%, -50%)" }],
+    { duration: 360, easing: "cubic-bezier(.16, 1, .3, 1)", fill: "forwards" });
+  const line = stingerCenter.querySelector(".sline");
+  if (line) line.animate([{ width: "0px" }, { width: "260px" }], { duration: 420, delay: 80, easing: "cubic-bezier(.16, 1, .3, 1)", fill: "forwards" });
+}
+async function revealStinger() {
+  const style = stingerStyle;
+  await wait(Math.max(0, style.hold - (Date.now() - coveredAt)));
+  stingerCenter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" });
+  await wait(90);
+  const last = BANDS.length - 1;
+  await Promise.all(BANDS.map((band, i) => band.animate(bandFrames(BAND_COVER, BAND_OFF_RIGHT),
+    { duration: style.move, delay: (last - i) * style.stagger, easing: BAND_EASE, fill: "forwards" }).finished));
+  stinger.classList.remove("on");
+  BANDS.forEach(band => band.getAnimations().forEach(a => a.cancel()));
+}
+function postCommand(body) {
+  return fetch("/media/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(e => console.warn(e));
+}
+function runTransition(graphic) {
+  return queue(async () => {
+    await coverStinger(graphic.style);
+    if (graphic.scene) postCommand({ action: "cut", id: graphic.id });
+    await revealStinger();
+  });
+}
+function clearFullNow() {
+  fullRun++;
+  clearTimeout(fullTimer);
+  showingFull = null;
+  full.innerHTML = "";
+}
+function clearCoverNow() {
+  clearInterval(clockTimer);
+  clearTimeout(clipTimer);
+  cover.innerHTML = "";
+}
+function videoReady(video) {
+  return new Promise(done => {
+    if (video.readyState >= 3) return done();
+    const timer = setTimeout(done, CLIP_READY_MAX_MS);
+    video.addEventListener("canplay", () => { clearTimeout(timer); done(); }, { once: true });
+    video.addEventListener("error", () => { clearTimeout(timer); done(); }, { once: true });
+  });
+}
+function startClip(video, graphic) {
+  const rate = graphic.rate || 1;
+  const progress = document.getElementById("clipProgress");
+  const finish = () => {
+    clearTimeout(clipTimer);
+    video.onended = video.onerror = video.ontimeupdate = null;
+    postCommand({ action: "hide", slot: "full" });
+  };
+  video.defaultPlaybackRate = rate;
+  video.playbackRate = rate;
+  video.onended = finish;
+  video.onerror = () => { console.warn("Clip nicht abspielbar"); finish(); };
+  video.ontimeupdate = () => { if (progress && video.duration) progress.style.width = `${Math.min(100, video.currentTime / video.duration * 100)}%`; };
+  const limit = video.duration ? (video.duration / rate + CLIP_MARGIN_SECONDS) : CLIP_MAX_SECONDS;
+  clipTimer = setTimeout(finish, Math.min(limit, CLIP_MAX_SECONDS) * 1000);
+  video.play().catch(e => console.warn(e));
+}
+
 async function hideFull() {
   fullRun++;
   clearTimeout(fullTimer);
@@ -595,14 +731,18 @@ async function hideLower() {
   if (run === lowerRun) lower.innerHTML = "";
 }
 
+function screenStyle() {
+  const name = settings.transition;
+  return name === "cut" ? "" : (STINGERS[name] ? name : "gvl");
+}
 function hideCover() {
-  clearInterval(clockTimer);
-  clearTimeout(clipTimer);
-  const current = cover.firstElementChild;
-  if (!current) return;
-  current.classList.remove("enter");
-  current.classList.add("leave");
-  setTimeout(() => { if (current.parentNode) current.remove(); }, 500);
+  return queue(async () => {
+    if (!cover.firstElementChild) return;
+    const style = cover.querySelector(".clip") ? "gvl" : screenStyle();
+    if (style) await coverStinger(style);
+    clearCoverNow();
+    if (style) await revealStinger();
+  });
 }
 
 function lineupTicker(team) {
@@ -636,35 +776,26 @@ function renderTicker(graphic) {
   ticker.innerHTML = `<div class="badge" style="${content.style}"><img src="${esc(content.logo)}" alt="">${esc(content.badge)}</div><div class="track"><span style="animation-duration:${seconds}s">${esc(content.text)}</span></div>`;
 }
 
-async function showFull(graphic) {
+async function showFull(graphic, instant) {
   if (screens[graphic.kind]) {
-    await hideFull();
-    const [html, target] = screens[graphic.kind](graphic);
-    hideCover();
-    cover.insertAdjacentHTML("beforeend", html);
-    startClock(target);
-    const video = cover.lastElementChild.querySelector("video");
-    clearTimeout(clipTimer);
-    if (video && graphic.kind === "clip") {
-      const rate = graphic.rate || 1;
-      const finish = () => {
-        clearTimeout(clipTimer);
-        video.onended = video.onerror = null;
-        fetch("/media/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "hide", slot: "full" }) });
-      };
-      video.defaultPlaybackRate = rate;
-      video.playbackRate = rate;
-      video.onended = finish;
-      video.onerror = () => { console.warn("Clip nicht abspielbar"); finish(); };
-      video.onloadedmetadata = () => {
-        video.playbackRate = rate;
-        clearTimeout(clipTimer);
-        clipTimer = setTimeout(finish, (video.duration / rate + CLIP_MARGIN_SECONDS) * 1000);
-      };
-      clipTimer = setTimeout(finish, CLIP_MAX_SECONDS * 1000);
-    }
     showingFull = graphic;
-    return;
+    return queue(async () => {
+      const clip = graphic.kind === "clip";
+      const style = instant ? "" : clip ? "gvl" : screenStyle();
+      const [html, target] = screens[graphic.kind](graphic);
+      if (style) await coverStinger(style, clip ? ((graphic.rate || 1) < 1 ? "Slow Motion" : "Replay") : "");
+      clearFullNow();
+      clearCoverNow();
+      showingFull = graphic;
+      cover.insertAdjacentHTML("beforeend", html);
+      startClock(target);
+      const video = cover.querySelector("video");
+      if (video) {
+        await videoReady(video);
+        startClip(video, graphic);
+      }
+      if (style) await revealStinger();
+    });
   }
   hideCover();
   if (!match && !STREAM_KINDS.includes(graphic.kind)) return;
@@ -693,6 +824,7 @@ async function showLower(graphic) {
 function apply(message) {
   if (message.auto) auto = message.auto;
   if (message.type === "command") {
+    if (message.action === "transition" && message.graphic) runTransition(message.graphic);
     if (message.action === "show") {
       if (message.slot === "ticker") renderTicker(message.graphic);
       else (message.slot === "full" ? showFull : showLower)(message.graphic);
@@ -718,7 +850,7 @@ function apply(message) {
     leagueAt = 0;
   }
   if (first && message.visible) {
-    if (message.visible.full) showFull(message.visible.full);
+    if (message.visible.full) showFull(message.visible.full, true);
     if (message.visible.lower) showLower(message.visible.lower);
     renderTicker(message.visible.ticker);
   } else if (tickerGraphic) {

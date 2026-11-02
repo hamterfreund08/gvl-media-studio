@@ -121,6 +121,19 @@ The link stays valid while the tunnel is running. If you restart the tunnel, cli
 
 **Hide everything** clears the screen at any time.
 
+## Scenes and transitions
+
+The **Stream** tab lists all OBS scenes under **Scenes**. A click switches to that scene using the transition selected above:
+
+- **GVL stinger:** White, red and dark bands sweep diagonally across the screen with the GVL logo in the middle.
+- **Fast:** The same sweep, shorter, for quick changes.
+- **Team colours:** Bands in both teams' colours with both crests in the middle. Without a connected match it falls back to the GVL stinger.
+- **Hard cut:** Direct switch without animation.
+
+The scene switches while the screen is fully covered, so viewers never see the cut. The selected transition is also used for Stream Starting Soon, Be Right Back and Stream Ending. **Test transition** plays it once without switching scenes.
+
+The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.10.0 the scenes only appear once OBS has been restarted.
+
 ## Replays
 
 **In-game replay** uses the Roblox 3D replay and only runs on your screen. Start it from the panel, from the Media window in the game, or with the `F8` key. It keeps up to 30 seconds. Only players who were on the pitch appear in the replay.

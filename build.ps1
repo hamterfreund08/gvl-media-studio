@@ -13,6 +13,7 @@ Push-Location $root
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller ist fehlgeschlagen" }
 $app = Join-Path $root "dist\GVL Media Studio"
 Copy-Item obs\gvl_media_studio.lua, obs\loader.html, THIRD_PARTY_NOTICES.md $app
+Copy-Item obs\stingers (Join-Path $app "stingers") -Recurse -Force
 $version = (Select-String -Path (Join-Path $root "media_studio.py") -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
 [IO.File]::WriteAllText((Join-Path $app "version.txt"), $version)
 & "$venv\Scripts\python.exe" -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', sys.argv[2])" (Join-Path $root "dist\GVL-Media-Studio") $app

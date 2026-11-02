@@ -132,7 +132,9 @@ The **Stream** tab lists all OBS scenes under **Scenes**. A click switches to th
 
 The scene switches while the screen is fully covered, so viewers never see the cut. The selected transition is also used for Stream Starting Soon, Be Right Back and Stream Ending. **Test transition** plays it once without switching scenes.
 
-The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.10.1 the scenes only appear once OBS has been restarted.
+The overlay source has to be on top in every scene. When switching from the dock, the program moves it there itself. After updating to 1.11.0 the scenes only appear once OBS has been restarted.
+
+**In OBS itself:** **GVL Stinger** and **GVL Stinger Schnell** are also listed under **Scene Transitions** as stinger videos. Pick one and it plays on every scene change, including clicks on a scene, Studio Mode and hotkeys. Team colours are only available in the panel because the videos have fixed colours. After updating from the panel, both transitions appear once OBS has been closed and opened again.
 
 ## Replays
 
@@ -192,6 +194,8 @@ The script downloads `cloudflared` automatically and creates the finished packag
 | `web/` | Panel (`dock.html`) and overlay (`overlay.html`) |
 | `obs/` | OBS script and panel start page |
 | `build.ps1` | Builds the package |
+| `updater.py`, `app.py` | Updates from GitHub and the setup window |
+| `tools/render_stingers.py` | Renders the stinger videos into `obs/stingers`, only needed after changing the stinger (needs `playwright`, `imageio-ffmpeg` and Chrome) |
 
 The part inside the Roblox game belongs to the GVL system and is not included in this repository.
 

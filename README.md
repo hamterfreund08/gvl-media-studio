@@ -132,7 +132,9 @@ Im Reiter **Stream** stehen unter **Szenen** alle Szenen aus OBS. Ein Klick wech
 
 Gewechselt wird, während das Bild ganz bedeckt ist. Der Zuschauer sieht keinen Schnitt. Der ausgewählte Übergang gilt auch für Stream Starting Soon, Gleich zurück und Stream-Ende. Mit **Übergang testen** läuft er einmal ohne Szenenwechsel.
 
-Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.10.1 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das Dock legt das Programm sie selbst dorthin. Nach dem Update auf 1.11.0 erscheinen die Szenen erst, wenn OBS einmal neu gestartet wurde.
+
+**In OBS selbst:** Unter **Szenenübergänge** stehen außerdem **GVL Stinger** und **GVL Stinger Schnell** als Stinger-Videos. Wählst du einen davon aus, läuft er bei jedem Szenenwechsel, auch beim Klick auf eine Szene, im Studio-Modus und mit Hotkeys. Teamfarben gibt es nur im Panel, weil die Videos feste Farben haben. Nach einem Update aus dem Panel heraus erscheinen die beiden Übergänge, sobald OBS einmal geschlossen und wieder geöffnet wurde.
 
 ## Replays
 
@@ -192,6 +194,8 @@ Das Skript lädt `cloudflared` automatisch herunter und legt das fertige Paket u
 | `web/` | Panel (`dock.html`) und Overlay (`overlay.html`) |
 | `obs/` | OBS-Skript und Startseite des Panels |
 | `build.ps1` | Baut das Paket |
+| `updater.py`, `app.py` | Updates über GitHub und das Fenster zum Installieren |
+| `tools/render_stingers.py` | Rendert die Stinger-Videos nach `obs/stingers`, nur nach Änderungen am Stinger nötig (braucht `playwright`, `imageio-ffmpeg` und Chrome) |
 
 Der Teil im Roblox-Spiel gehört zum GVL-System und ist nicht Teil dieses Repositorys.
 

@@ -40,6 +40,9 @@ STOP_WAIT = 5
 COPY_ATTEMPTS = 6
 COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
+STINGER_DIR = "stingers"
+STINGER_ID = "obs_stinger_transition"
+STINGER_PREFIX = "GVL Stinger"
 
 
 def message(text, icon=MB_ICONINFO):
@@ -131,6 +134,46 @@ def set_script(path, change):
     modules = data.setdefault("modules", {})
     modules["scripts-tool"] = change(modules.get("scripts-tool") or [])
     write_text(path, json.dumps(data, ensure_ascii=False, indent=4))
+
+
+def stinger_transitions(program):
+    folder = os.path.join(program, STINGER_DIR)
+    try:
+        listing = json.loads(read_text(os.path.join(folder, "stingers.json")))
+    except (OSError, ValueError):
+        return []
+    return [{"name": item["name"], "id": STINGER_ID,
+             "settings": {"path": os.path.join(folder, item["file"]).replace("\\", "/"), "tp_type": 0,
+                          "transition_point": int(item["point"]), "preload": True}}
+            for item in listing if os.path.isfile(os.path.join(folder, item["file"]))]
+
+
+def is_our_transition(transition):
+    return transition.get("id") == STINGER_ID and str(transition.get("name") or "").startswith(STINGER_PREFIX)
+
+
+def stinger_key(transition):
+    settings = transition.get("settings") or {}
+    return transition.get("name"), settings.get("path"), settings.get("transition_point")
+
+
+def set_transitions(path, wanted):
+    data = json.loads(read_text(path))
+    current = data.get("transitions") or []
+    ours = [t for t in current if is_our_transition(t)]
+    if sorted(map(stinger_key, ours)) == sorted(map(stinger_key, wanted)):
+        return
+    data["transitions"] = [t for t in current if not is_our_transition(t)] + wanted
+    write_text(path, json.dumps(data, ensure_ascii=False, indent=4))
+
+
+def register_stingers(program):
+    wanted = stinger_transitions(program)
+    for path in scene_files():
+        try:
+            set_transitions(path, wanted)
+        except (OSError, ValueError):
+            pass
 
 
 def set_ini_value(path, section, key, value):
@@ -242,6 +285,7 @@ def install():
         set_docks(path, lambda docks: other_docks(docks) + [dock])
     for path in scene_files():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))] + [script])
+    register_stingers(program)
     set_replay_buffer(True)
     note = "" if program == TARGET else f" Der Virenschutz hat das Kopieren blockiert. Das Programm bleibt deshalb in diesem Ordner, bitte nicht verschieben oder löschen: {program}"
     return f"Installiert. OBS starten und unter Docks den Eintrag GVL Media Studio einschalten.{note}"
@@ -253,6 +297,7 @@ def uninstall():
         set_docks(path, other_docks)
     for path in scene_files():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))])
+        set_transitions(path, [])
     set_replay_buffer(False)
     for folder in (USER_TARGET, SHARED_TARGET):
         shutil.rmtree(folder, onexc=force_delete)

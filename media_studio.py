@@ -38,7 +38,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.10.1"
+VERSION = "1.11.0"
 HOST = "127.0.0.1"
 PORT = 40231
 LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
@@ -740,6 +740,8 @@ async def watch_obs(app):
         seen = seen or running
         if (seen and not running) or (not seen and time.time() - started > OBS_START_WAIT):
             await stop_tunnel()
+            if seen and getattr(sys, "frozen", False):
+                await asyncio.to_thread(installer.register_stingers, EXE_DIR)
             os._exit(0)
 
 

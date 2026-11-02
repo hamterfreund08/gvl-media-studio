@@ -1,7 +1,8 @@
 """Richtet GVL Media Studio in OBS ein oder entfernt es wieder.
 
-Kopiert das Programm nach %LOCALAPPDATA%\\GVLMediaStudio, traegt das Dock in die OBS-Einstellungen ein und
-meldet das Lua-Skript in allen Szenensammlungen an. OBS muss dafuer geschlossen sein.
+Die EXE enthaelt alles. Sie kopiert sich nach %LOCALAPPDATA%\\GVLMediaStudio, legt OBS-Skript, Startseite des
+Panels und Stinger-Videos daneben, traegt das Dock in die OBS-Einstellungen ein und meldet das Lua-Skript in
+allen Szenensammlungen an. OBS muss dafuer geschlossen sein.
 
 Das Lua-Skript kann Pfade mit Sonderzeichen nicht oeffnen. Enthaelt der Benutzerpfad welche, zum Beispiel
 einen Umlaut im Windows-Namen, wird stattdessen nach %PROGRAMDATA%\\GVLMediaStudio installiert.
@@ -40,6 +41,7 @@ STOP_WAIT = 5
 COPY_ATTEMPTS = 6
 COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
+PACKAGE_DIR = "package"
 STINGER_DIR = "stingers"
 STINGER_ID = "obs_stinger_transition"
 STINGER_PREFIXES = ("GVL Swipe", "GVL Stinger")
@@ -244,10 +246,28 @@ def copy_file(source, target):
     make_writable(target)
 
 
-def copy_program(source):
+def bundled_package():
+    folder = os.path.join(getattr(sys, "_MEIPASS", ""), PACKAGE_DIR)
+    return folder if os.path.isdir(folder) else ""
+
+
+def write_program(target):
+    exe = os.path.abspath(sys.executable)
+    package = bundled_package()
+    if not package:
+        shutil.copytree(os.path.dirname(exe), target, copy_function=copy_file, dirs_exist_ok=True)
+        return
+    os.makedirs(target, exist_ok=True)
+    own = os.path.join(target, REQUIRED_FILES[0])
+    if os.path.normcase(exe) != os.path.normcase(own):
+        copy_file(exe, own)
+    shutil.copytree(package, target, copy_function=copy_file, dirs_exist_ok=True)
+
+
+def copy_program(target):
     for attempt in range(1, COPY_ATTEMPTS + 1):
         try:
-            shutil.copytree(source, TARGET, copy_function=copy_file, dirs_exist_ok=True)
+            write_program(target)
             return
         except OSError:
             if attempt == COPY_ATTEMPTS:
@@ -267,15 +287,19 @@ def install():
         for folder in (USER_TARGET, SHARED_TARGET):
             shutil.rmtree(folder, onexc=force_delete)
         try:
-            copy_program(source)
+            copy_program(TARGET)
             blocked = bool(missing_files(TARGET))
-        except shutil.Error:
+        except OSError:
             if not source.isascii():
                 raise
             blocked = True
         if blocked and source.isascii():
             shutil.rmtree(TARGET, onexc=force_delete)
             program = source
+            if bundled_package():
+                copy_program(source)
+    elif bundled_package():
+        copy_program(TARGET)
     missing = missing_files(program)
     if missing:
         raise OSError(f"Dateien fehlen in {program}: {', '.join(missing)}. Der Virenschutz hat sie eventuell entfernt.")

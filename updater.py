@@ -107,6 +107,8 @@ def apply(target, then):
         except OSError as e:
             error = str(e)
             time.sleep(COPY_DELAY)
+    if not error and not os.path.isdir(os.path.join(stage, "_internal")):
+        shutil.rmtree(os.path.join(target, "_internal"), onexc=installer.force_delete)
     print(f"Update nach {target}: {error or 'fertig'}", flush=True)
     os.makedirs(installer.SETTINGS_DIR, exist_ok=True)
     with open(os.path.join(installer.SETTINGS_DIR, RESULT_NAME), "w", encoding="utf-8") as f:

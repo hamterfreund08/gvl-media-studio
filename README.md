@@ -71,25 +71,26 @@ Python oder andere Programme musst du für die normale Nutzung nicht installiere
 
 ## Installation
 
-> **Wichtig:** Lade **nicht** den grünen **Code**-Knopf herunter. Darin fehlt das Programm. Du brauchst die Datei `GVL-Media-Studio.zip` aus den Releases.
+> **Wichtig:** Lade **nicht** den grünen **Code**-Knopf herunter. Darin fehlt das Programm. Du brauchst die Datei `GVL-Media-Studio.exe` aus den Releases.
 
-1. Lade die aktuelle [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip) herunter.
-2. Entpacke die ZIP komplett in einen Ordner. Starte nichts direkt aus dem ZIP-Fenster.
-3. Schließe OBS.
-4. Starte im entpackten Ordner `GVL Media Studio.exe` und klicke im Fenster auf **Installieren**.
-5. Öffne OBS und schalte im Menü **Docks** den Eintrag **GVL Media Studio** ein.
+1. Lade die aktuelle [`GVL-Media-Studio.exe`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.exe) herunter. Sie enthält alles, mehr brauchst du nicht.
+2. Schließe OBS.
+3. Starte `GVL-Media-Studio.exe` und klicke im Fenster auf **Installieren**.
+4. Öffne OBS und schalte im Menü **Docks** den Eintrag **GVL Media Studio** ein.
 
 Das Panel ist jetzt da, und die Quelle `GVL Broadcast Overlay` liegt in deinen Szenen. Das Programm startet und beendet sich ab jetzt automatisch mit OBS.
 
 > Windows SmartScreen kann beim ersten Start warnen, weil das Programm nicht signiert ist. Klicke dann auf **Weitere Informationen** und **Trotzdem ausführen**. Lade die Datei nur aus diesem Repository.
 
-Blockiert der Virenschutz das Kopieren, bleibt das Programm im entpackten Ordner. Die Bestätigung weist darauf hin. Diesen Ordner dann nicht verschieben oder löschen.
+Blockiert der Virenschutz das Kopieren, bleibt das Programm im Ordner der EXE. Die Bestätigung weist darauf hin. Diesen Ordner dann nicht verschieben oder löschen.
+
+Die Datei `GVL-Media-Studio.zip` im Release braucht das Panel für die automatischen Updates. Entpackt funktioniert sie genauso: im Ordner `GVL Media Studio.exe` starten und **Installieren** klicken.
 
 ### Aktualisieren
 
 Gibt es eine neue Version, zeigt das Panel oben einen Hinweis. Ein Klick auf **Jetzt aktualisieren** lädt sie von GitHub und startet das Panel neu. Ändert sich dabei das OBS-Skript, steht im Panel, dass OBS einmal neu gestartet werden muss. Während der Tunnel läuft, geht das Update nicht.
 
-Alternativ im Panel auf **App öffnen** klicken, OBS schließen und im Fenster **Aktualisieren** wählen. Ab Version 1.9.0 geht das so, ältere Versionen einmal von Hand aktualisieren: OBS schließen, die neue ZIP entpacken, dort `GVL Media Studio.exe` starten und auf **Aktualisieren** klicken. Einstellungen und Stream-Plan bleiben erhalten.
+Alternativ im Panel auf **App öffnen** klicken, OBS schließen und im Fenster **Aktualisieren** wählen. Ab Version 1.9.0 geht das so, ältere Versionen einmal von Hand aktualisieren: OBS schließen, die neue `GVL-Media-Studio.exe` starten und auf **Aktualisieren** klicken. Einstellungen und Stream-Plan bleiben erhalten.
 
 Im selben Fenster repariert **Reparieren** eine kaputte Einrichtung, zum Beispiel wenn das Panel in OBS fehlt.
 
@@ -192,7 +193,7 @@ cd gvl-media-studio
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Das Skript lädt `cloudflared` automatisch herunter und legt das fertige Paket unter `dist\GVL-Media-Studio.zip` ab.
+Das Skript lädt `cloudflared` automatisch herunter und legt `dist\GVL-Media-Studio.exe` (eigenständige EXE) und `dist\GVL-Media-Studio.zip` (für die Updates) ab.
 
 ### Aufbau
 

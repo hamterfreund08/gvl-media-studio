@@ -71,19 +71,20 @@ You do not need Python or any other software for normal use.
 
 ## Installation
 
-> **Important:** Do **not** use the green **Code** button. It does not include the program. You need the `GVL-Media-Studio.zip` file from Releases.
+> **Important:** Do **not** use the green **Code** button. It does not include the program. You need the `GVL-Media-Studio.exe` file from Releases.
 
-1. Download the latest [`GVL-Media-Studio.zip`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.zip).
-2. Extract the whole ZIP into a folder. Do not run anything from inside the ZIP window.
-3. Close OBS.
-4. Run `GVL Media Studio.exe` in the extracted folder and click **Install** in the window.
-5. Open OBS and enable **GVL Media Studio** in the **Docks** menu.
+1. Download the latest [`GVL-Media-Studio.exe`](https://github.com/hamterfreund08/gvl-media-studio/releases/latest/download/GVL-Media-Studio.exe). It contains everything, nothing else is needed.
+2. Close OBS.
+3. Run `GVL-Media-Studio.exe` and click **Install** in the window.
+4. Open OBS and enable **GVL Media Studio** in the **Docks** menu.
 
 The panel is now available and the `GVL Broadcast Overlay` source is in your scenes. From now on the program starts and stops together with OBS.
 
 > Windows SmartScreen may warn you on the first start because the program is not signed. Click **More info** and **Run anyway**. Only download the file from this repository.
 
-If your antivirus blocks the copy, the program stays in the extracted folder and the confirmation tells you so. Do not move or delete that folder in that case.
+If your antivirus blocks the copy, the program stays in the folder of the EXE and the confirmation tells you so. Do not move or delete that folder in that case.
+
+The panel uses the `GVL-Media-Studio.zip` file in each release for automatic updates. Extracted, it works the same way: run `GVL Media Studio.exe` in the folder and click **Install**.
 
 ### Updating
 
@@ -192,7 +193,7 @@ cd gvl-media-studio
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-The script downloads `cloudflared` automatically and creates the finished package at `dist\GVL-Media-Studio.zip`.
+The script downloads `cloudflared` automatically and creates `dist\GVL-Media-Studio.exe` (standalone EXE) and `dist\GVL-Media-Studio.zip` (for updates).
 
 ### Project layout
 

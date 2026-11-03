@@ -1,0 +1,3 @@
+[submodule "gvl-obs-common"]
+	path = gvl-obs-common
+	url = https://github.com/hamterfreund08/gvl-obs-common.git

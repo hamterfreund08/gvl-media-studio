@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/gvl_logo.png" alt="GVL" width="96">
+  <img src="docs/images/gvl_logo.png" alt="GVL" width="96">
 </p>
 
 <h1 align="center">GVL Media Studio</h1>
@@ -137,6 +137,21 @@ The overlay source has to be on top in every scene. When switching from the dock
 
 **In OBS itself:** **GVL Swipe** and **GVL Swipe Fast** are also listed under **Scene Transitions** as stinger videos. Pick one and it plays on every scene change, including clicks on a scene, Studio Mode and hotkeys. Team colours are only available in the panel because the videos have fixed colours. After updating from the panel, both transitions appear once OBS has been closed and opened again.
 
+## Conference
+
+With **GVL Regie** several matches are broadcast at once, like a TV conference. You do not stream to Twitch or YouTube then, you send your picture straight to the control room.
+
+1. The control room sends you a **control room link**.
+2. In the **Stream** tab under **Conference**, paste the link and choose your match from the stream plan. Optionally enter your name.
+3. Click **Send to conference**. OBS is switched to the conference, your current stream setting is saved.
+4. Click **Start stream to control room**.
+
+The panel then shows **LIVE** (the control room is showing your match), **LIVE SOON** (you are next) or **NOT ON AIR**. Score, goals and cards go to the control room automatically. During the conference your overlay does not show goals, cards and substitutions itself, the control room does that.
+
+**End conference** stops the stream to the control room and restores your previous stream setting. If OBS crashed during the conference, **Restore previous stream setting** appears on the next start.
+
+The conference needs the **GVL conference module** in OBS. It is installed automatically with the program. If it is missing anyway, the panel installs it with one click, then restart OBS once.
+
 ## Social media
 
 Enter your Discord, Instagram, Twitch, TikTok and YouTube channels under **Social media** in the **Stream** tab. A missing `@` is added automatically, except for links like `discord.gg/gvl`. Discord is prefilled with `discord.gg/gvl`, so it always shows in the corner.
@@ -188,10 +203,12 @@ Error log: `%APPDATA%\GVLMediaStudio\media_studio.log`
 This is only needed for developers. You need Windows and Python 3.13.
 
 ```powershell
-git clone https://github.com/hamterfreund08/gvl-media-studio.git
+git clone --recurse-submodules https://github.com/hamterfreund08/gvl-media-studio.git
 cd gvl-media-studio
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
+
+Code shared with GVL Regie (tunnel, updater, app window, conference module, font and logo) lives in `gvl-obs-common`. The build script looks for it inside the repo or next to it.
 
 The script downloads `cloudflared` automatically and creates `dist\GVL-Media-Studio.exe` (standalone EXE) and `dist\GVL-Media-Studio.zip` (for updates).
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/gvl_logo.png" alt="GVL" width="96">
+  <img src="docs/images/gvl_logo.png" alt="GVL" width="96">
 </p>
 
 <h1 align="center">GVL Media Studio</h1>
@@ -137,6 +137,21 @@ Die Overlay-Quelle muss in jeder Szene ganz oben liegen. Beim Wechsel über das 
 
 **In OBS selbst:** Unter **Szenenübergänge** stehen außerdem **GVL Swipe** und **GVL Swipe Fast** als Stinger-Videos. Wählst du einen davon aus, läuft er bei jedem Szenenwechsel, auch beim Klick auf eine Szene, im Studio-Modus und mit Hotkeys. Teamfarben gibt es nur im Panel, weil die Videos feste Farben haben. Nach einem Update aus dem Panel heraus erscheinen die beiden Übergänge, sobald OBS einmal geschlossen und wieder geöffnet wurde.
 
+## Konferenz
+
+Mit der **GVL Regie** werden mehrere Spiele gleichzeitig übertragen, wie in einer Fernseh-Konferenz. Du streamst dann nicht auf Twitch oder YouTube, sondern schickst dein Bild direkt an die Regie.
+
+1. Die Regie schickt dir einen **Regie-Link**.
+2. Im Reiter **Stream** unter **Konferenz** den Link einfügen und dein Spiel aus dem Stream-Plan wählen. Optional deinen Namen eintragen.
+3. **Für Konferenz senden** klicken. OBS wird auf die Konferenz umgestellt, deine bisherige Stream-Einstellung wird gesichert.
+4. **Stream an die Regie starten** klicken.
+
+Oben im Panel steht dann groß **LIVE** (die Regie zeigt dein Spiel), **GLEICH LIVE** (du bist als Nächstes dran) oder **NICHT IM BILD**. Spielstand, Tore und Karten gehen automatisch an die Regie. Während der Konferenz blendet dein Overlay Tore, Karten und Wechsel nicht selbst ein, das übernimmt die Regie.
+
+**Konferenz beenden** stoppt den Stream an die Regie und stellt deine alte Stream-Einstellung wieder her. Ist OBS mitten in der Konferenz abgestürzt, erscheint beim nächsten Start **Alte Stream-Einstellung wiederherstellen**.
+
+Für die Konferenz braucht OBS das **GVL Konferenz-Modul**. Es wird bei der Installation automatisch mitinstalliert. Fehlt es trotzdem, installiert das Panel es per Knopfdruck, danach OBS einmal neu starten.
+
 ## Social Media
 
 Im Reiter **Stream** unter **Social Media** trägst du die Kanäle für Discord, Instagram, Twitch, TikTok und YouTube ein. Ohne `@` wird es automatisch ergänzt, außer bei Links wie `discord.gg/gvl`. Discord ist mit `discord.gg/gvl` vorausgefüllt und erscheint damit immer in der Ecke.
@@ -188,10 +203,12 @@ Fehlerprotokoll: `%APPDATA%\GVLMediaStudio\media_studio.log`
 Nur für Entwickler nötig. Du brauchst Windows und Python 3.13.
 
 ```powershell
-git clone https://github.com/hamterfreund08/gvl-media-studio.git
+git clone --recurse-submodules https://github.com/hamterfreund08/gvl-media-studio.git
 cd gvl-media-studio
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
+
+Gemeinsamer Code mit der GVL Regie (Tunnel, Updater, App-Fenster, Konferenz-Modul, Schrift und Logo) liegt in `gvl-obs-common`. Das Build-Skript sucht den Ordner im Repo oder daneben.
 
 Das Skript lädt `cloudflared` automatisch herunter und legt `dist\GVL-Media-Studio.exe` (eigenständige EXE) und `dist\GVL-Media-Studio.zip` (für die Updates) ab.
 
@@ -204,7 +221,7 @@ Das Skript lädt `cloudflared` automatisch herunter und legt `dist\GVL-Media-Stu
 | `web/` | Panel (`dock.html`) und Overlay (`overlay.html`) |
 | `obs/` | OBS-Skript und Startseite des Panels |
 | `build.ps1` | Baut das Paket |
-| `updater.py`, `app.py` | Updates über GitHub und das Fenster zum Installieren |
+| `updater.py`, `app.py` | Updates über GitHub und das Fenster zum Installieren, beides aus `gvl-obs-common` |
 | `tools/render_stingers.py` | Rendert die Stinger-Videos nach `obs/stingers`, nur nach Änderungen am Stinger nötig (braucht `playwright`, `imageio-ffmpeg` und Chrome) |
 
 Der Teil im Roblox-Spiel gehört zum GVL-System und ist nicht Teil dieses Repositorys.

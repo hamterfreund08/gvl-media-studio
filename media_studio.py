@@ -495,7 +495,7 @@ class Feed:
     async def send(self, target):
         events, self.events = self.events, []
         body = {"game": target["game"], "streamer": streamer_name(), "home": target["home"], "away": target["away"],
-                "match": studio.match, "events": events}
+                "match": studio.match, "events": events, "streaming": studio.conference["streaming"]}
         try:
             async with self.session.post(target["feed"], json=body, timeout=aiohttp.ClientTimeout(total=FEED_TIMEOUT)) as resp:
                 data = await resp.json(content_type=None) if resp.status == 200 else {"ok": False, "error": f"HTTP {resp.status}"}
@@ -545,6 +545,18 @@ async def stop_conference():
     replay_command("conference|stop")
     set_conference(active=False, connection="off", tally="off", message="")
     await feed.stop()
+
+
+async def auto_module():
+    """Fehlt das Konferenz-Modul, wird es still nachinstalliert. OBS laedt es beim naechsten Start."""
+    state, _ = await asyncio.to_thread(module.status)
+    if state != "missing":
+        return
+    try:
+        await asyncio.to_thread(module.install, lambda text: print(text, flush=True), True)
+        set_conference(message="Konferenz-Modul installiert. Bitte OBS einmal neu starten.")
+    except (module.ModuleError, OSError, ValueError) as e:
+        print(f"Konferenz-Modul nicht installiert: {e}", flush=True)
 
 
 async def install_module():
@@ -820,6 +832,7 @@ async def watch_replay():
                 conference_event(line.split("|")[1:])
             elif line.startswith("streaming|"):
                 set_conference(streaming=line.endswith("|1"))
+                feed.notify()
             elif line.startswith("module|") and studio.conference["obs"] != "on":
                 set_conference(obs="off" if line.endswith("|1") else "missing")
 
@@ -936,6 +949,7 @@ async def on_startup(app):
     after_update()
     if FROZEN:
         later(watch_updates())
+        later(auto_module())
     if "--no-obs-watch" not in sys.argv:
         later(watch_obs(app))
     with open(READY_FILE, "w", encoding="utf-8") as f:

@@ -2,7 +2,8 @@
 
 Die EXE enthaelt alles. Sie kopiert sich nach %LOCALAPPDATA%\\GVLMediaStudio, legt OBS-Skript, Startseite des
 Panels und Stinger-Videos daneben, traegt das Dock in die OBS-Einstellungen ein und meldet das Lua-Skript in
-allen Szenensammlungen an. OBS muss dafuer geschlossen sein.
+allen Szenensammlungen an. Das GVL Konferenz-Modul fuer die Konferenz wird automatisch mitinstalliert
+(gvl_common.module). OBS muss dafuer geschlossen sein.
 
 Das Lua-Skript kann Pfade mit Sonderzeichen nicht oeffnen. Enthaelt der Benutzerpfad welche, zum Beispiel
 einen Umlaut im Windows-Namen, wird stattdessen nach %PROGRAMDATA%\\GVLMediaStudio installiert.
@@ -13,14 +14,14 @@ import ctypes
 import json
 import os
 import shutil
-import stat
 import sys
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from gvl_common import obs
+from gvl_common import module, obs
+from gvl_common.files import copy_file, force_delete, make_writable
 from gvl_common.obs import config_files, obs_running, process_list, read_text, scene_files, set_docks, set_script, write_text
 
 TITLE = "GVL Media Studio"
@@ -132,25 +133,6 @@ def other_docks(docks):
     return [d for d in docks if d.get("title") != TITLE]
 
 
-def make_writable(path):
-    if os.path.exists(path):
-        os.chmod(path, stat.S_IWRITE)
-
-
-def force_delete(function, path, _error):
-    try:
-        make_writable(path)
-        function(path)
-    except OSError:
-        pass
-
-
-def copy_file(source, target):
-    make_writable(target)
-    shutil.copy2(source, target)
-    make_writable(target)
-
-
 def bundled_package():
     folder = os.path.join(getattr(sys, "_MEIPASS", ""), PACKAGE_DIR)
     return folder if os.path.isdir(folder) else ""
@@ -216,7 +198,10 @@ def install():
         set_script(path, lambda scripts: [s for s in scripts if not is_ours(s.get("path"))] + [script])
     register_stingers(program)
     set_replay_buffer(True)
+    problems = module.install_all(log=lambda _text: None)
     note = "" if program == TARGET else f" Der Virenschutz hat das Kopieren blockiert. Das Programm bleibt deshalb in diesem Ordner, bitte nicht verschieben oder löschen: {program}"
+    if problems:
+        note += " Für die Konferenz fehlt noch etwas: " + " ".join(problems)
     return f"Installiert. OBS starten und unter Docks den Eintrag GVL Media Studio einschalten.{note}"
 
 

@@ -140,6 +140,7 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
       <div class="hint left" id="confStreamHint">OBS ist auf die Konferenz eingestellt. Starte den Stream, damit die Regie dein Bild bekommt.</div>
       <button class="primary" id="confStream">Stream an die Regie starten</button>
       <button id="confStop">Konferenz beenden</button>
+      <div class="hint left">Während der Konferenz blendet dein Overlay Tore, Karten und Wechsel nicht automatisch ein. Die Grafiken macht die Regie.</div>
     </div>
     <div id="confLeftover" hidden style="display:flex;flex-direction:column;gap:8px">
       <div class="hint left">Dein OBS ist noch auf die Konferenz eingestellt, zum Beispiel nach einem Absturz.</div>
@@ -392,6 +393,7 @@ const EN = {
   "Erst den laufenden Stream beenden, dann für die Konferenz senden.": "Stop the running stream first, then send to the conference.",
   "Die Regie antwortet nicht. Ist die Konferenz gestartet und der Link aktuell?": "The control room does not answer. Is the conference running and the link current?",
   "Konferenz-Modul installiert. Bitte OBS einmal neu starten.": "Conference module installed. Please restart OBS once.",
+  "Während der Konferenz blendet dein Overlay Tore, Karten und Wechsel nicht automatisch ein. Die Grafiken macht die Regie.": "During the conference your overlay does not show goals, cards and substitutions automatically. The control room does the graphics.",
 };
 const originalText = new WeakMap();
 let language = "de";

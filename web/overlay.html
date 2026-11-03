@@ -949,8 +949,9 @@ function apply(message) {
     if (showingLower && !STREAM_KINDS.includes(showingLower.kind)) hideLower();
     return;
   }
+  const conference = !!(message.conference && message.conference.active);
   for (const event of message.fresh || []) {
-    if (auto[event.type]) showLower({ ...event, kind: event.type });
+    if (auto[event.type] && !conference) showLower({ ...event, kind: event.type });
   }
 }
 

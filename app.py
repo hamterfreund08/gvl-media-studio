@@ -12,12 +12,11 @@ import threading
 import tkinter
 import tkinter.font
 
+import gvl_common
 import installer
 import updater
 
-BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 EXE_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
-WEB_DIR = os.path.join(BASE_DIR, "web")
 BG = "#1b1c20"
 PANEL = "#26272d"
 LINE = "#383a42"
@@ -68,7 +67,7 @@ def t(text, **values):
 
 
 def load_font():
-    path = os.path.join(WEB_DIR, "Montserrat.ttf")
+    path = gvl_common.FONT
     if os.path.isfile(path):
         ctypes.windll.gdi32.AddFontResourceExW(path, FR_PRIVATE, 0)
 
@@ -106,7 +105,7 @@ class App:
         self.root.resizable(False, False)
         family = "Montserrat" if "Montserrat" in tkinter.font.families() else "Segoe UI"
         self.font = lambda size, weight="normal": (family, size, weight)
-        logo = os.path.join(WEB_DIR, "gvl_logo.png")
+        logo = gvl_common.LOGO
         self.logo = tkinter.PhotoImage(file=logo).subsample(3) if os.path.isfile(logo) else None
         if self.logo:
             self.root.iconphoto(True, tkinter.PhotoImage(file=logo))

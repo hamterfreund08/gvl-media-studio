@@ -7,3 +7,4 @@ ready.txt
 replay_cmd.txt
 replay_events.txt
 *.log
+conference_backup.json

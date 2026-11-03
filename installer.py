@@ -18,26 +18,25 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from ctypes import wintypes
 from pathlib import Path
+
+from gvl_common import obs
+from gvl_common.obs import config_files, obs_running, process_list, read_text, scene_files, set_docks, set_script, write_text
 
 TITLE = "GVL Media Studio"
 DOCK_UUID = "6f1d3a52-7c0e-4b1e-9a55-0c5a9f2e1b77"
 USER_TARGET = os.path.join(os.environ["LOCALAPPDATA"], "GVLMediaStudio")
 SHARED_TARGET = os.path.join(os.environ.get("PROGRAMDATA", r"C:\ProgramData"), "GVLMediaStudio")
 TARGET = USER_TARGET if USER_TARGET.isascii() else SHARED_TARGET
-OBS_DIR = os.path.join(os.environ["APPDATA"], "obs-studio")
+OBS_DIR = obs.OBS_DIR
 SETTINGS_DIR = os.path.join(os.environ["APPDATA"], "GVLMediaStudio")
 VERSION_FILE = "version.txt"
 SCRIPT = "gvl_media_studio.lua"
 MB_ICONERROR = 0x10
 MB_ICONINFO = 0x40
-SNAPSHOT_PROCESSES = 0x2
 REPLAY_SECONDS = 30
 SERVICE_EXE = "gvl media studio.exe"
 TUNNEL_EXE = "cloudflared.exe"
-PROCESS_TERMINATE = 0x1
-STOP_WAIT = 5
 COPY_ATTEMPTS = 6
 COPY_DELAY = 1.5
 REQUIRED_FILES = ("GVL Media Studio.exe", SCRIPT, "loader.html")
@@ -51,91 +50,8 @@ def message(text, icon=MB_ICONINFO):
     ctypes.windll.user32.MessageBoxW(None, text, TITLE, icon)
 
 
-class ProcessEntry(ctypes.Structure):
-    _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
-                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
-                ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", wintypes.LONG), ("dwFlags", wintypes.DWORD),
-                ("szExeFile", wintypes.WCHAR * 260)]
-
-
-def process_list():
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-    kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-    kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
-    kernel.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
-    kernel.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
-    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
-    snapshot = kernel.CreateToolhelp32Snapshot(SNAPSHOT_PROCESSES, 0)
-    entry = ProcessEntry()
-    entry.dwSize = ctypes.sizeof(ProcessEntry)
-    found = []
-    more = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
-    while more:
-        found.append((entry.th32ProcessID, entry.th32ParentProcessID, entry.szExeFile.lower()))
-        more = kernel.Process32NextW(snapshot, ctypes.byref(entry))
-    kernel.CloseHandle(snapshot)
-    return found
-
-
-def obs_running():
-    return any(name == "obs64.exe" for _, _, name in process_list())
-
-
 def stop_service():
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-    kernel.OpenProcess.restype = wintypes.HANDLE
-    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-    kernel.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
-    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
-    me = os.getpid()
-    processes = process_list()
-    services = {pid for pid, _, name in processes if name == SERVICE_EXE.lower() and pid != me}
-    tunnels = {pid for pid, parent, name in processes if name == TUNNEL_EXE and parent in services}
-    for pid in services | tunnels:
-        handle = kernel.OpenProcess(PROCESS_TERMINATE, False, pid)
-        if handle:
-            kernel.TerminateProcess(handle, 0)
-            kernel.CloseHandle(handle)
-    end = time.time() + STOP_WAIT
-    while time.time() < end and services & {pid for pid, _, _ in process_list()}:
-        time.sleep(0.2)
-
-
-def read_text(path):
-    with open(path, encoding="utf-8-sig") as f:
-        return f.read()
-
-
-def write_text(path, text):
-    tmp = path + ".gvl-tmp"
-    with open(tmp, "w", encoding="utf-8", newline="") as f:
-        f.write(text)
-    os.replace(tmp, path)
-
-
-def set_docks(path, change):
-    if not os.path.isfile(path):
-        return
-    lines = read_text(path).split("\n")
-    for i, line in enumerate(lines):
-        if line.rstrip("\r").startswith("ExtraBrowserDocks="):
-            ending = "\r" if line.endswith("\r") else ""
-            value = line.rstrip("\r").split("=", 1)[1]
-            lines[i] = "ExtraBrowserDocks=" + json.dumps(change(json.loads(value or "[]")), separators=(",", ":")) + ending
-            break
-    else:
-        for i, line in enumerate(lines):
-            if line.rstrip("\r") == "[BasicWindow]":
-                lines.insert(i + 1, "ExtraBrowserDocks=" + json.dumps(change([]), separators=(",", ":")))
-                break
-    write_text(path, "\n".join(lines))
-
-
-def set_script(path, change):
-    data = json.loads(read_text(path))
-    modules = data.setdefault("modules", {})
-    modules["scripts-tool"] = change(modules.get("scripts-tool") or [])
-    write_text(path, json.dumps(data, ensure_ascii=False, indent=4))
+    obs.stop_service(SERVICE_EXE, TUNNEL_EXE)
 
 
 def stinger_transitions(program):
@@ -206,17 +122,6 @@ def set_replay_buffer(enabled):
             for section in ("[SimpleOutput]", "[AdvOut]"):
                 set_ini_value(path, section, "RecRB", "true" if enabled else "false")
                 set_ini_value(path, section, "RecRBTime", REPLAY_SECONDS)
-
-
-def scene_files():
-    folder = os.path.join(OBS_DIR, "basic", "scenes")
-    if not os.path.isdir(folder):
-        return []
-    return [os.path.join(folder, name) for name in os.listdir(folder) if name.endswith(".json")]
-
-
-def config_files():
-    return [os.path.join(OBS_DIR, name) for name in ("user.ini", "global.ini")]
 
 
 def is_ours(path):

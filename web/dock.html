@@ -71,6 +71,19 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
 #update .hint { text-align: left; }
 .social-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
 .social-row button { padding: 7px 12px; }
+.tally { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 14px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); text-align: center; }
+.tally b { font-size: 30px; font-weight: 900; letter-spacing: 3px; line-height: 1; }
+.tally small { font-size: 12px; font-weight: 600; opacity: .85; }
+.tally.live { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tally.preview { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tally.error { border-color: var(--warn); }
+.tally.live b { animation: blink 1.4s infinite; }
+@keyframes blink { 50% { opacity: .6; } }
+.conn-line { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.conn-line i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.conn-line.ok i { background: var(--ok); } .conn-line.error i, .conn-line.connecting i { background: var(--warn); }
+.hint.left { text-align: left; }
+.hint.warn { color: var(--warn); }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -85,6 +98,8 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
   <button id="releaseBtn">Auf GitHub öffnen</button>
   <button id="updateSeen">Ausblenden</button>
 </section>
+
+<div class="tally" id="tally" hidden><b id="tallyText"></b><small id="tallySub"></small></div>
 
 <button class="clear" id="clearAll">Alles ausblenden</button>
 
@@ -109,6 +124,32 @@ select, input[type=text], input[type=number] { width: 100%; font: inherit; color
     <div class="two" id="scenes"></div>
     <div class="hint" id="scenesHint">Die Szenen erscheinen nach einem Neustart von OBS.</div>
     <button id="testTransition">Übergang testen</button>
+  </section>
+
+  <section id="conference">
+    <h2>Konferenz</h2>
+    <div id="confSetup" style="display:flex;flex-direction:column;gap:8px">
+      <input type="text" id="confLink" maxlength="300" placeholder="Regie-Link einfügen" aria-label="Regie-Link">
+      <select id="confGame" aria-label="Spiel für die Konferenz"></select>
+      <input type="text" id="confName" maxlength="40" placeholder="Dein Name für die Regie (optional)" aria-label="Streamer-Name">
+      <button class="primary" id="confStart">Für Konferenz senden</button>
+      <div class="hint left">Stellt den Stream von OBS auf die Regie um. Deine bisherige Stream-Einstellung wird gesichert und beim Beenden wiederhergestellt.</div>
+    </div>
+    <div id="confRunning" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div class="conn-line" id="confLine"><i></i><span id="confConnection"></span></div>
+      <div class="hint left" id="confStreamHint">OBS ist auf die Konferenz eingestellt. Starte den Stream, damit die Regie dein Bild bekommt.</div>
+      <button class="primary" id="confStream">Stream an die Regie starten</button>
+      <button id="confStop">Konferenz beenden</button>
+    </div>
+    <div id="confLeftover" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div class="hint left">Dein OBS ist noch auf die Konferenz eingestellt, zum Beispiel nach einem Absturz.</div>
+      <button id="confRestore">Alte Stream-Einstellung wiederherstellen</button>
+    </div>
+    <div id="confModule" hidden style="display:flex;flex-direction:column;gap:8px">
+      <div class="hint left">Für die Konferenz braucht OBS das GVL Konferenz-Modul. Danach OBS einmal neu starten.</div>
+      <button id="confInstall">Konferenz-Modul installieren</button>
+    </div>
+    <div class="hint left warn" id="confMessage" hidden></div>
   </section>
 </div>
 
@@ -327,6 +368,30 @@ const EN = {
   "Falls es wieder scheitert, die neue Version auf GitHub laden.": "If it fails again, download the new version on GitHub.",
   "Update auf {new} fertig.": "Updated to {new}.",
   "Bitte OBS einmal neu starten.": "Please restart OBS once.",
+  "Beende vorher Tunnel und Konferenz.": "Stop the tunnel and the conference first.",
+  "Konferenz": "Conference", "Regie-Link einfügen": "Paste control room link", "Regie-Link": "Control room link",
+  "Spiel für die Konferenz": "Match for the conference", "Dein Name für die Regie (optional)": "Your name for the control room (optional)",
+  "Streamer-Name": "Streamer name", "Für Konferenz senden": "Send to conference",
+  "Stellt den Stream von OBS auf die Regie um. Deine bisherige Stream-Einstellung wird gesichert und beim Beenden wiederhergestellt.": "Switches the OBS stream to the control room. Your current stream setting is saved and restored when you end the conference.",
+  "OBS ist auf die Konferenz eingestellt. Starte den Stream, damit die Regie dein Bild bekommt.": "OBS is set to the conference. Start the stream so the control room gets your picture.",
+  "Stream an die Regie starten": "Start stream to control room", "Stream an die Regie stoppen": "Stop stream to control room",
+  "Konferenz beenden": "End conference", "Dein OBS ist noch auf die Konferenz eingestellt, zum Beispiel nach einem Absturz.": "Your OBS is still set to the conference, for example after a crash.",
+  "Alte Stream-Einstellung wiederherstellen": "Restore previous stream setting",
+  "Für die Konferenz braucht OBS das GVL Konferenz-Modul. Danach OBS einmal neu starten.": "The conference needs the GVL conference module in OBS. Restart OBS once afterwards.",
+  "Konferenz-Modul installieren": "Install conference module", "Wird installiert ...": "Installing ...",
+  "Erst Spiele im Plan auswählen": "Choose matches in the plan first",
+  "Verbinde mit der Regie ...": "Connecting to the control room ...", "Verbunden mit der Regie": "Connected to the control room",
+  "Regie nicht erreichbar": "Control room not reachable", "Stellt OBS um ...": "Switching OBS ...",
+  "LIVE": "LIVE", "GLEICH LIVE": "LIVE SOON", "NICHT IM BILD": "NOT ON AIR", "KEINE VERBINDUNG": "NO CONNECTION",
+  "Die Regie zeigt gerade dein Spiel.": "The control room is showing your match.",
+  "Die Regie schaltet gleich zu dir.": "The control room is about to switch to you.",
+  "Die Regie zeigt gerade ein anderes Spiel.": "The control room is showing another match.",
+  "Der Regie-Link ist ungültig. Bitte den ganzen Link aus der Regie einfügen.": "The control room link is invalid. Please paste the whole link.",
+  "Bitte ein Spiel aus deinem Stream-Plan auswählen.": "Please choose a match from your stream plan.",
+  "Das GVL Konferenz-Modul fehlt in OBS.": "The GVL conference module is missing in OBS.",
+  "Erst den laufenden Stream beenden, dann für die Konferenz senden.": "Stop the running stream first, then send to the conference.",
+  "Die Regie antwortet nicht. Ist die Konferenz gestartet und der Link aktuell?": "The control room does not answer. Is the conference running and the link current?",
+  "Konferenz-Modul installiert. Bitte OBS einmal neu starten.": "Conference module installed. Please restart OBS once.",
 };
 const originalText = new WeakMap();
 let language = "de";
@@ -375,6 +440,8 @@ let version = null;
 let tunnelState = "off";
 let buffer = false;
 let dataStamp = 0;
+let conference = { active: false, connection: "off", tally: "off", obs: "unknown", streaming: false, games: [], message: "" };
+const TALLY = { live: ["LIVE", "Die Regie zeigt gerade dein Spiel."], preview: ["GLEICH LIVE", "Die Regie schaltet gleich zu dir."], off: ["NICHT IM BILD", "Die Regie zeigt gerade ein anderes Spiel."] };
 
 async function post(path, body) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -390,7 +457,7 @@ function saveSettings(values) {
 function fill(text, values) { return t(text).replace(/\{(\w+)\}/g, (_, key) => values[key]); }
 function renderUpdate(update) {
   const state = update.state;
-  const tunnelOn = tunnelState !== "off";
+  const tunnelOn = tunnelState !== "off" || conference.active;
   $("update").hidden = state === "none";
   $("updateBtn").hidden = !["available", "error"].includes(state) || !update.download;
   $("updateBtn").disabled = tunnelOn;
@@ -400,7 +467,7 @@ function renderUpdate(update) {
   let text = "";
   if (state === "available") {
     text = fill("Version {new} ist da, du hast {old}.", { new: update.version, old: version });
-    text += " " + t(!update.download ? "Lade sie auf GitHub herunter und installiere sie wie gewohnt." : tunnelOn ? "Beende vorher den Tunnel." : "Das Panel startet danach kurz neu.");
+    text += " " + t(!update.download ? "Lade sie auf GitHub herunter und installiere sie wie gewohnt." : tunnelOn ? "Beende vorher Tunnel und Konferenz." : "Das Panel startet danach kurz neu.");
   } else if (state === "downloading") {
     text = fill("Update wird geladen ... {percent} %", { percent: update.progress });
   } else if (state === "restarting") {
@@ -615,6 +682,51 @@ function renderScenes(scenes, current) {
   });
 }
 
+function renderConference() {
+  const conf = conference;
+  const saved = settings.conference || { link: "", game: "", name: "" };
+  const running = conf.active;
+  $("confSetup").hidden = running;
+  $("confRunning").hidden = !running;
+  $("confLeftover").hidden = running || conf.obs !== "on";
+  $("confModule").hidden = conf.obs !== "missing";
+  $("confInstall").disabled = !!conf.installing;
+  $("confInstall").textContent = t(conf.installing ? "Wird installiert ..." : "Konferenz-Modul installieren");
+  if (document.activeElement !== $("confLink")) $("confLink").value = saved.link || "";
+  if (document.activeElement !== $("confName")) $("confName").value = saved.name || "";
+  const games = conf.games || [];
+  const html = games.length
+    ? games.map(g => `<option value="${g.id}">${(g.home + " : " + g.away).replace(/</g, "")}${g.date ? `, ${g.date.slice(0, 5)} ${g.time || ""}` : ""}</option>`).join("")
+    : `<option value="">${t("Erst Spiele im Plan auswählen")}</option>`;
+  if ($("confGame").dataset.html !== html) {
+    $("confGame").innerHTML = html;
+    $("confGame").dataset.html = html;
+  }
+  $("confGame").value = games.some(g => g.id === saved.game) ? saved.game : (games[0] || { id: "" }).id;
+  $("confStart").disabled = !$("confLink").value.trim() || !$("confGame").value || conf.obs === "missing";
+  const connection = { connecting: "Verbinde mit der Regie ...", ok: "Verbunden mit der Regie", error: "Regie nicht erreichbar" }[conf.connection] || "Verbinde mit der Regie ...";
+  $("confLine").className = `conn-line ${conf.connection}`;
+  $("confConnection").textContent = conf.obs === "on" ? t(connection) : t("Stellt OBS um ...");
+  $("confStream").hidden = conf.obs !== "on";
+  $("confStream").textContent = t(conf.streaming ? "Stream an die Regie stoppen" : "Stream an die Regie starten");
+  $("confStream").classList.toggle("primary", !conf.streaming);
+  $("confStreamHint").hidden = conf.obs !== "on" || conf.streaming;
+  $("confMessage").hidden = !conf.message;
+  $("confMessage").textContent = t(conf.message || "");
+  const showTally = running && conf.obs === "on";
+  $("tally").hidden = !showTally;
+  if (showTally) {
+    const broken = conf.connection === "error";
+    const [title, sub] = broken ? ["KEINE VERBINDUNG", "Regie nicht erreichbar"] : TALLY[conf.tally] || TALLY.off;
+    $("tally").className = `tally ${broken ? "error" : conf.tally}`;
+    $("tallyText").textContent = t(title);
+    $("tallySub").textContent = t(sub);
+  }
+}
+function saveConference(values) {
+  saveSettings({ conference: { ...(settings.conference || {}), ...values } });
+}
+
 async function loadGames() {
   games = await (await fetch("/media/schedule")).json();
   const names = [...new Set(games.map(g => g.competition).filter(Boolean))].sort();
@@ -647,6 +759,8 @@ function apply(message) {
     renderScenes(message.scenes || [], message.scene || "");
     renderTunnel(message.tunnel);
     tunnelState = message.tunnel.state;
+    if (message.conference) conference = message.conference;
+    renderConference();
     $("version").textContent = version;
     if (message.update) renderUpdate(message.update);
     renderStatus(message.status);
@@ -753,6 +867,25 @@ $("openApp").onclick = () => send({ action: "openApp" });
 $("updateBtn").onclick = () => send({ action: "update" });
 $("releaseBtn").onclick = () => send({ action: "openRelease" });
 $("updateSeen").onclick = () => send({ action: "updateSeen" });
+$("confLink").oninput = () => {
+  saveConference({ link: $("confLink").value.trim() });
+  $("confStart").disabled = !$("confLink").value.trim() || !$("confGame").value || conference.obs === "missing";
+};
+$("confName").oninput = () => saveConference({ name: $("confName").value });
+$("confGame").onchange = () => {
+  settings.conference = { ...(settings.conference || {}), game: $("confGame").value };
+  send({ action: "settings", values: { conference: settings.conference } });
+};
+$("confStart").onclick = async () => {
+  clearTimeout(saveTimer);
+  settings.conference = { ...(settings.conference || {}), link: $("confLink").value.trim(), name: $("confName").value, game: $("confGame").value };
+  await send({ action: "settings", values: { conference: settings.conference } });
+  send({ action: "conference", value: true });
+};
+$("confStop").onclick = () => send({ action: "conference", value: false });
+$("confRestore").onclick = () => send({ action: "conference", value: false });
+$("confStream").onclick = () => send({ action: "conferenceStream", value: !conference.streaming });
+$("confInstall").onclick = () => send({ action: "installModule" });
 $("startTunnel").onclick = () => send({ action: "tunnel", value: true });
 $("stopTunnel").onclick = () => send({ action: "tunnel", value: false });
 $("copyLink").onclick = () => {

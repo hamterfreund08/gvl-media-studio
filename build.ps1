@@ -3,6 +3,8 @@ $root = $PSScriptRoot
 $venv = Join-Path $env:TEMP "gvl-media-build"
 $package = Join-Path $env:TEMP "gvl-media-package"
 $cloudflared = Join-Path $root "cloudflared.exe"
+$common = @((Join-Path $root "gvl-obs-common"), (Join-Path $root "..\gvl-obs-common")) | Where-Object { Test-Path (Join-Path $_ "gvl_common") } | Select-Object -First 1
+if (-not $common) { throw "gvl-obs-common fehlt. Es muss neben media-studio oder als Unterordner liegen." }
 if (-not (Test-Path $cloudflared)) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile $cloudflared -UseBasicParsing
@@ -16,7 +18,7 @@ New-Item -ItemType Directory $package | Out-Null
 Copy-Item obs\gvl_media_studio.lua, obs\loader.html, THIRD_PARTY_NOTICES.md $package
 Copy-Item obs\stingers (Join-Path $package "stingers") -Recurse
 [IO.File]::WriteAllText((Join-Path $package "version.txt"), $version)
-& "$venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --noconsole --onefile --name "GVL Media Studio" --hidden-import installer --hidden-import updater --hidden-import app --add-data "$root\web;web" --add-data "$package;package" --add-binary "$root\cloudflared.exe;." --distpath "$root\build\onefile" --workpath "$root\build" --specpath "$root\build" "$root\media_studio.py"
+& "$venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --noconsole --onefile --name "GVL Media Studio" --hidden-import installer --hidden-import updater --hidden-import app --paths "$common" --add-data "$root\web;web" --add-data "$common\gvl_common\assets;gvl_common\assets" --add-data "$package;package" --add-binary "$root\cloudflared.exe;." --distpath "$root\build\onefile" --workpath "$root\build" --specpath "$root\build" "$root\media_studio.py"
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller ist fehlgeschlagen" }
 $exe = Join-Path $root "build\onefile\GVL Media Studio.exe"
 $app = Join-Path $root "dist\GVL Media Studio"

@@ -19,10 +19,13 @@ from playwright.async_api import async_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
+COMMON = next(p for p in (os.path.join(ROOT, "gvl-obs-common"), os.path.join(ROOT, "..", "gvl-obs-common")) if os.path.isdir(p))
+ASSETS = os.path.join(COMMON, "gvl_common", "assets")
 OUT = os.path.join(ROOT, "obs", "stingers")
 FPS = 60
 STINGERS = (("gvl", "GVL Swipe", "gvl_stinger.webm"), ("fast", "GVL Swipe Fast", "gvl_stinger_fast.webm"))
-FILES = {"/media/overlay": "overlay.html", "/media/assets/montserrat.ttf": "Montserrat.ttf", "/media/assets/gvl_logo.png": "gvl_logo.png"}
+FILES = {"/media/overlay": os.path.join(WEB, "overlay.html"), "/media/assets/montserrat.ttf": os.path.join(ASSETS, "Montserrat.ttf"),
+         "/media/assets/gvl_logo.png": os.path.join(ASSETS, "gvl_logo.png")}
 
 TIMELINE = """name => {
   const style = STINGERS[name];
@@ -58,7 +61,7 @@ TIMELINE = """name => {
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        return os.path.join(WEB, FILES.get(path.split("?")[0], "missing"))
+        return FILES.get(path.split("?")[0], os.path.join(WEB, "missing"))
 
     def log_message(self, *args):
         pass

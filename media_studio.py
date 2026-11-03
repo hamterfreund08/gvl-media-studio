@@ -4,6 +4,10 @@ OBS startet dieses Programm ueber obs/gvl_media_studio.lua. Es lauscht nur auf 1
 einen Cloudflare-Tunnel auf. Der Link enthaelt ein Geheimnis und wird im Spiel eingefuegt, danach schickt der
 Stadion-Server seine Daten an /in/<geheimnis>/push. Ueber den Tunnel ist nur dieser Eingang erreichbar.
 
+Konferenz: Traegt der Streamer einen Regie-Link ein und sendet fuer die Konferenz, stellt das Lua-Skript den
+Stream-Dienst von OBS auf das GVL Konferenz-Modul um. Jedes Update aus dem Spiel geht dann zusaetzlich an die Regie,
+die mit dem Tally (live, preview, off) antwortet. Ohne aktive Konferenz laeuft alles wie bisher.
+
 Tabelle, Form und Spieltag kommen aus dem Standings-Sheet, Logos und Avatare von der Roblox-Thumbnail-API.
 Das Programm beendet sich selbst, sobald OBS geschlossen wird.
 """
@@ -17,17 +21,29 @@ import shutil
 import sys
 import time
 import traceback
+import urllib.parse
 import zipfile
+
+FROZEN = getattr(sys, "frozen", False)
+BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+if not FROZEN:
+    for common in (os.path.join(BASE_DIR, "gvl-obs-common"), os.path.join(BASE_DIR, "..", "gvl-obs-common")):
+        if os.path.isdir(common):
+            sys.path.insert(0, common)
+            break
 
 import aiohttp
 from aiohttp import web
 
+import gvl_common
+from gvl_common import dns, module, obs, roblox, service
+from gvl_common.tunnel import Tunnel
+
 import installer
 import updater
 
-BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 WEB_DIR = os.path.join(BASE_DIR, "web")
-EXE_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
+EXE_DIR = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
 CLOUDFLARED = os.path.join(BASE_DIR, "cloudflared.exe")
 READY_FILE = os.path.join(EXE_DIR, "ready.txt")
 SETTINGS_DIR = os.path.join(os.environ.get("APPDATA", EXE_DIR), "GVLMediaStudio")
@@ -38,20 +54,17 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.14.0"
+VERSION = "1.15.0"
 HOST = "127.0.0.1"
 PORT = 40231
-LOCAL_HOSTS = (f"{HOST}:{PORT}", f"localhost:{PORT}")
-LOCAL_ORIGINS = (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}", "null")
-NO_WINDOW = 0x08000000
-
-THUMB_ASSETS = "https://thumbnails.roblox.com/v1/assets?assetIds={}&size=420x420&format=Png&isCircular=false"
-THUMB_AVATARS = "https://thumbnails.roblox.com/v1/users/avatar?userIds={}&size=720x720&format=Png&isCircular=false"
 
 DATA_KEYS = ("league", "teams", "matches", "standings", "games", "top")
+DEFAULT_CONFERENCE = {"link": "", "game": "", "name": ""}
 DEFAULT_SETTINGS = {"plan": [], "commentators": ["", ""], "ticker": "", "title": "", "subtitle": "", "replayDir": "", "autoClip": False, "language": "de", "transition": "gvl",
-                    "socials": {"discord": "discord.gg/gvl", "instagram": "", "twitch": "", "tiktok": "", "youtube": ""}}
+                    "socials": {"discord": "discord.gg/gvl", "instagram": "", "twitch": "", "tiktok": "", "youtube": ""},
+                    "conference": dict(DEFAULT_CONFERENCE)}
 SOCIAL_MAX = 40
+CONFERENCE_MAX = {"link": 300, "game": 40, "name": 40}
 REPLAY_SECONDS = (10, 20, 30)
 TRANSITIONS = ("gvl", "fast", "team", "cut")
 CUT_FALLBACK = 3
@@ -60,12 +73,7 @@ CLIP_RATES = (0.5, 1)
 GOAL_CLIP_DELAY = 5
 REPLAY_POLL = 0.25
 LIVE_STATUSES = ("Halftime 1", "Break", "Halftime 2", "Extra Time", "Penalty", "FT", "FFT", "GameFinishedRef")
-MAX_CLIENTS = 8
 STALE_AFTER = 25
-PING_EVERY = 15
-ASSET_CACHE_SEC = 6 * 3600
-THUMB_BATCH = 50
-TUNNEL_WAIT = 40
 TOP_SCORERS = 8
 SCHEDULE_DAYS = 14
 PLAN_REFRESH = 60
@@ -78,6 +86,16 @@ STAGE_CLEAN_DELAY = 20
 STAGE_DIR = os.path.join(EXE_DIR, updater.STAGE)
 NO_UPDATE = {"state": "none", "version": "", "url": "", "page": "", "progress": 0, "message": "", "restartObs": False}
 
+FEED_EVERY = 5
+FEED_MIN_GAP = 0.5
+FEED_TIMEOUT = 8
+FEED_MAX_EVENTS = 20
+TALLIES = ("live", "preview", "off")
+PASSWORD = re.compile(r"[A-Za-z0-9_-]{6,64}")
+SECRET = re.compile(r"[A-Za-z0-9_-]{16,64}")
+NO_CONFERENCE = {"active": False, "connection": "off", "message": "", "tally": "off", "obs": "unknown", "streaming": False,
+                 "streamId": "", "installing": False}
+
 
 def load_settings():
     settings = json.loads(json.dumps(DEFAULT_SETTINGS))
@@ -89,7 +107,12 @@ def load_settings():
     settings.update({k: v for k, v in saved.items() if k in settings and type(v) is type(settings[k])})
     saved_socials = settings["socials"]
     settings["socials"] = {key: str(saved_socials.get(key, default) or "")[:SOCIAL_MAX] for key, default in DEFAULT_SETTINGS["socials"].items()}
+    settings["conference"] = clean_conference(settings["conference"])
     return settings
+
+
+def clean_conference(value):
+    return {key: str(value.get(key) or "").strip()[:CONFERENCE_MAX[key]] for key in DEFAULT_CONFERENCE}
 
 
 def load_data():
@@ -122,30 +145,31 @@ class Studio:
         self.clip_label = ""
         self.picking = False
         self.auto = {"goal": True, "card": True, "sub": True}
-        self.clients = set()
-        self.tunnel = {"state": "off", "link": "", "message": ""}
+        self.hub = service.Hub()
+        self.tunnel = Tunnel(CLOUDFLARED, PORT, self.broadcast)
         self.update = dict(NO_UPDATE)
         self.scenes = []
         self.scene = ""
         self.pending_cut = None
+        self.conference = dict(NO_CONFERENCE)
 
     def status(self):
         return {"linked": bool(self.job), "stale": self.stale, "by": self.by}
 
+    def tunnel_state(self):
+        url = self.tunnel.state["url"]
+        return {"state": self.tunnel.state["state"], "message": self.tunnel.state["message"], "link": f"{url}/in/{self.secret}" if url else ""}
+
     def message(self, kind="state"):
-        return {"type": kind, "version": VERSION, "status": self.status(), "tunnel": self.tunnel, "match": self.match, "visible": self.visible,
+        return {"type": kind, "version": VERSION, "status": self.status(), "tunnel": self.tunnel_state(), "match": self.match, "visible": self.visible,
                 "auto": self.auto, "assets": assets_for(self.match), "events": self.events[-8:],
                 "settings": self.settings, "scenes": self.scenes, "scene": self.scene, "plan": self.plan, "results": self.results, "buffer": self.buffer, "dataStamp": self.data_stamp,
                 "clips": [{k: c[k] for k in ("id", "name", "time")} for c in self.clips],
-                "update": {**{k: v for k, v in self.update.items() if k != "url"}, "download": bool(self.update["url"])}}
+                "update": {**{k: v for k, v in self.update.items() if k != "url"}, "download": bool(self.update["url"])},
+                "conference": {**self.conference, "games": conference_games()}}
 
     def send(self, data):
-        text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-        for queue in list(self.clients):
-            try:
-                queue.put_nowait(text)
-            except asyncio.QueueFull:
-                self.clients.discard(queue)
+        self.hub.send(data)
 
     def broadcast(self):
         self.send(self.message())
@@ -166,20 +190,16 @@ def save_settings():
 
 
 studio = Studio()
-asset_cache: dict[str, tuple[float, str]] = {}
+thumbs = roblox.Thumbs()
 http: aiohttp.ClientSession | None = None
-tunnel_process: asyncio.subprocess.Process | None = None
 background: list[asyncio.Task] = []
 resolving = False
+digits = roblox.digits
 
 
-def digits(value):
-    return "".join(c for c in str(value or "") if c.isdigit())
-
-
-def cached_asset(kind, value):
-    entry = asset_cache.get(f"{kind}:{value}")
-    return entry[1] if entry and time.time() - entry[0] < ASSET_CACHE_SEC else None
+def later(coroutine):
+    background.append(asyncio.create_task(coroutine))
+    del background[:-20]
 
 
 def wanted_assets(match):
@@ -200,26 +220,8 @@ def wanted_assets(match):
 
 def assets_for(match):
     logos, avatars = wanted_assets(match)
-    return {"logos": {i: cached_asset("logo", i) for i in logos if cached_asset("logo", i)},
-            "avatars": {i: cached_asset("avatar", i) for i in avatars if cached_asset("avatar", i)}}
-
-
-async def fetch_thumbs(kind, template, ids):
-    pending = [i for i in ids if not cached_asset(kind, i)]
-    for start in range(0, len(pending), THUMB_BATCH):
-        batch = pending[start:start + THUMB_BATCH]
-        for _ in range(4):
-            async with http.get(template.format(",".join(batch))) as resp:
-                data = (await resp.json(content_type=None)).get("data") or []
-            waiting = False
-            for row in data:
-                if row.get("state") == "Completed" and row.get("imageUrl"):
-                    asset_cache[f"{kind}:{row.get('targetId')}"] = (time.time(), row["imageUrl"])
-                elif row.get("state") == "Pending":
-                    waiting = True
-            if not waiting:
-                break
-            await asyncio.sleep(1.5)
+    return {"logos": {i: thumbs.get("logo", i) for i in logos if thumbs.get("logo", i)},
+            "avatars": {i: thumbs.get("avatar", i) for i in avatars if thumbs.get("avatar", i)}}
 
 
 async def resolve_assets():
@@ -230,8 +232,8 @@ async def resolve_assets():
     try:
         logos, avatars = wanted_assets(studio.match)
         before = assets_for(studio.match)
-        await fetch_thumbs("logo", THUMB_ASSETS, logos)
-        await fetch_thumbs("avatar", THUMB_AVATARS, avatars)
+        await thumbs.fetch(http, "logo", logos)
+        await thumbs.fetch(http, "avatar", avatars)
         if assets_for(studio.match) != before:
             studio.broadcast()
     except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
@@ -278,10 +280,10 @@ async def upcoming():
                       "time": m.get("KickOffTime") or "", "kickoff": kickoff})
     games.sort(key=lambda g: g["kickoff"])
     names = {g[side].lower() for g in games for side in ("home", "away")}
-    await fetch_thumbs("logo", THUMB_ASSETS, {logos[n] for n in names if n in logos})
+    await thumbs.fetch(http, "logo", {logos[n] for n in names if n in logos})
     for game in games:
-        game["homeLogo"] = cached_asset("logo", logos.get(game["home"].lower()))
-        game["awayLogo"] = cached_asset("logo", logos.get(game["away"].lower()))
+        game["homeLogo"] = thumbs.get("logo", logos.get(game["home"].lower()))
+        game["awayLogo"] = thumbs.get("logo", logos.get(game["away"].lower()))
     return games
 
 
@@ -312,9 +314,9 @@ async def watch_plan():
 
 async def top_scorers():
     players = studio.data["top"]
-    await fetch_thumbs("avatar", THUMB_AVATARS, {digits(p.get("userId")) for p in players if digits(p.get("userId"))})
+    await thumbs.fetch(http, "avatar", {digits(p.get("userId")) for p in players if digits(p.get("userId"))})
     return [{"name": p.get("name"), "goals": number(p.get("goals")), "assists": number(p.get("assists")),
-             "avatar": cached_asset("avatar", digits(p.get("userId")))} for p in players]
+             "avatar": thumbs.get("avatar", digits(p.get("userId")))} for p in players]
 
 
 def split_score(value):
@@ -393,84 +395,168 @@ async def league_data(match):
     fixtures.sort(key=lambda f: f["time"])
     names = {t["name"].lower() for t in table}
     names |= {f[side].lower() for f in fixtures for side in ("home", "away")}
-    await fetch_thumbs("logo", THUMB_ASSETS, {logos[n] for n in names if n in logos})
+    await thumbs.fetch(http, "logo", {logos[n] for n in names if n in logos})
     form = {side: team_form(matches, str((match.get(side) or {}).get("name") or "").lower()) for side in ("home", "away")}
     return {"table": table, "live": live, "form": form, "fixtures": fixtures, "top": await top_scorers(),
-            "logos": {n: cached_asset("logo", logos[n]) for n in names if n in logos}}
-
-
-def set_tunnel(state, link="", message=""):
-    studio.tunnel = {"state": state, "link": link, "message": message}
-    studio.broadcast()
-
-
-async def watch_tunnel(process):
-    found = False
-    try:
-        while True:
-            line = await process.stderr.readline()
-            if not line:
-                break
-            url = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", line.decode("utf-8", "replace"))
-            if url and not found and "api.trycloudflare" not in url.group(0):
-                found = True
-                set_tunnel("ready", f"{url.group(0)}/in/{studio.secret}")
-    finally:
-        if process is tunnel_process:
-            set_tunnel("off", message="Der Tunnel wurde beendet. Bitte neu starten.")
-
-
-async def start_tunnel():
-    global tunnel_process
-    if studio.tunnel["state"] != "off":
-        return
-    if not os.path.isfile(CLOUDFLARED):
-        set_tunnel("off", message="cloudflared.exe fehlt. Bitte neu installieren.")
-        return
-    set_tunnel("starting")
-    tunnel_process = await asyncio.create_subprocess_exec(
-        CLOUDFLARED, "tunnel", "--no-autoupdate", "--url", f"http://{HOST}:{PORT}",
-        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE, creationflags=NO_WINDOW)
-    background.append(asyncio.create_task(watch_tunnel(tunnel_process)))
-    background.append(asyncio.create_task(tunnel_timeout(tunnel_process)))
-
-
-async def tunnel_timeout(process):
-    await asyncio.sleep(TUNNEL_WAIT)
-    if process is tunnel_process and studio.tunnel["state"] == "starting":
-        await stop_tunnel()
-        set_tunnel("off", message="Cloudflare hat nicht geantwortet. Bitte erneut versuchen.")
+            "logos": {n: thumbs.get("logo", logos[n]) for n in names if n in logos}}
 
 
 async def stop_tunnel():
-    global tunnel_process
-    process, tunnel_process = tunnel_process, None
-    if process and process.returncode is None:
-        process.kill()
-        await process.wait()
+    await studio.tunnel.stop()
     studio.unlink()
-    set_tunnel("off")
 
 
-@web.middleware
-async def guard(request, handler):
-    tunneled = "Cf-Ray" in request.headers or "Cf-Connecting-Ip" in request.headers
-    inbound = request.path.startswith("/in/")
-    if tunneled != inbound or (tunneled and request.match_info.get("secret") != studio.secret):
-        raise web.HTTPNotFound()
-    if not tunneled:
-        origin = request.headers.get("Origin")
-        if request.host not in LOCAL_HOSTS or (origin and origin not in LOCAL_ORIGINS):
-            raise web.HTTPForbidden()
-    return await handler(request)
+def conference_id(date, match_id):
+    day = re.sub(r"\D", "", str(date or ""))
+    day = day[:4] + day[-2:] if len(day) == 8 else day
+    game = digits(match_id)
+    return f"gvl_{day}_{game}" if day and game else ""
 
 
-async def body_of(request):
+def conference_games():
+    """Spiele, fuer die der Streamer senden kann: sein Stream-Plan und das gerade verbundene Spiel."""
+    games = []
+    for g in studio.plan:
+        games.append({"id": conference_id(g["date"], g["id"]), "home": g["home"], "away": g["away"], "date": g["date"], "time": g["time"]})
+    match = studio.match or {}
+    current = conference_id(match.get("date"), match.get("gameId"))
+    if current and all(g["id"] != current for g in games):
+        games.insert(0, {"id": current, "home": (match.get("home") or {}).get("name") or "", "away": (match.get("away") or {}).get("name") or "",
+                         "date": match.get("date") or "", "time": match.get("kickoff") or ""})
+    return [g for g in games if g["id"]]
+
+
+def parse_regie_link(link):
+    parsed = urllib.parse.urlsplit(link.strip())
+    parts = parsed.path.strip("/").split("/")
+    password = (urllib.parse.parse_qs(parsed.query).get("pw") or [""])[0]
+    if parsed.scheme != "https" or not parsed.netloc or len(parts) != 2 or parts[0] != "in" or not SECRET.fullmatch(parts[1]) or not PASSWORD.fullmatch(password):
+        return None
+    base = f"https://{parsed.netloc}/in/{parts[1]}"
+    return {"feed": base + "/feed", "bye": base + "/bye", "password": password}
+
+
+def streamer_name():
+    return studio.settings["conference"]["name"] or studio.by
+
+
+def set_conference(**values):
+    if any(studio.conference.get(k) != v for k, v in values.items()):
+        studio.conference.update(values)
+        studio.broadcast()
+
+
+class Feed:
+    """Schickt Spielstand und Ereignisse an die Regie. Immer nur eine Anfrage gleichzeitig, Fehler nur im Log."""
+
+    def __init__(self):
+        self.target = None
+        self.events = []
+        self.wake = None
+        self.task = None
+        self.session = None
+
+    def start(self, target):
+        self.target = target
+        if not self.session:
+            self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(resolver=dns.FallbackResolver()),
+                                                 headers={"User-Agent": "GVL-Media-Studio"})
+        self.events = []
+        self.wake = self.wake or asyncio.Event()
+        if not self.task or self.task.done():
+            self.task = asyncio.create_task(self.run())
+        self.wake.set()
+
+    def notify(self, fresh=()):
+        if not self.target:
+            return
+        self.events.extend(e for e in fresh if isinstance(e, dict))
+        del self.events[:-FEED_MAX_EVENTS]
+        self.wake.set()
+
+    async def stop(self):
+        target, self.target = self.target, None
+        if self.task:
+            self.task.cancel()
+            self.task = None
+        if target:
+            try:
+                async with self.session.post(target["bye"], json={"game": target["game"]}, timeout=aiohttp.ClientTimeout(total=FEED_TIMEOUT)):
+                    pass
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                print(f"Regie nicht abgemeldet: {e or type(e).__name__}", flush=True)
+
+    async def close(self):
+        await self.stop()
+        if self.session:
+            await self.session.close()
+            self.session = None
+
+    async def send(self, target):
+        events, self.events = self.events, []
+        body = {"game": target["game"], "streamer": streamer_name(), "home": target["home"], "away": target["away"],
+                "match": studio.match, "events": events}
+        try:
+            async with self.session.post(target["feed"], json=body, timeout=aiohttp.ClientTimeout(total=FEED_TIMEOUT)) as resp:
+                data = await resp.json(content_type=None) if resp.status == 200 else {"ok": False, "error": f"HTTP {resp.status}"}
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
+            data = {"ok": False, "error": str(e) or type(e).__name__}
+        if target is not self.target:
+            return
+        if data.get("ok"):
+            set_conference(connection="ok", tally=data.get("tally") if data.get("tally") in TALLIES else "off", message="")
+            return
+        self.events[:0] = events
+        del self.events[:-FEED_MAX_EVENTS]
+        print(f"Regie nicht erreicht: {data.get('error')}", flush=True)
+        set_conference(connection="error", tally="off", message="Die Regie antwortet nicht. Ist die Konferenz gestartet und der Link aktuell?")
+
+    async def run(self):
+        while self.target:
+            self.wake.clear()
+            await self.send(self.target)
+            await asyncio.sleep(FEED_MIN_GAP)
+            try:
+                await asyncio.wait_for(self.wake.wait(), FEED_EVERY)
+            except asyncio.TimeoutError:
+                pass
+
+
+feed = Feed()
+
+
+async def start_conference():
+    conf = studio.settings["conference"]
+    target = parse_regie_link(conf["link"])
+    game = next((g for g in conference_games() if g["id"] == conf["game"]), None)
+    if not target:
+        return set_conference(message="Der Regie-Link ist ungültig. Bitte den ganzen Link aus der Regie einfügen.")
+    if not game:
+        return set_conference(message="Bitte ein Spiel aus deinem Stream-Plan auswählen.")
+    if studio.conference["obs"] == "missing":
+        return set_conference(message="Das GVL Konferenz-Modul fehlt in OBS.")
+    target.update(game=game["id"], home=game["home"], away=game["away"])
+    replay_command(f"conference|start|{game['id']}|{target['password']}")
+    set_conference(active=True, connection="connecting", tally="off", message="", streamId=game["id"])
+    feed.start(target)
+
+
+async def stop_conference():
+    replay_command("conference|stop")
+    set_conference(active=False, connection="off", tally="off", message="")
+    await feed.stop()
+
+
+async def install_module():
+    if studio.conference["installing"]:
+        return
+    set_conference(installing=True, message="")
     try:
-        data = await request.json()
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
+        await asyncio.to_thread(module.install, lambda text: print(text, flush=True), True)
+        set_conference(installing=False, message="Konferenz-Modul installiert. Bitte OBS einmal neu starten.")
+    except (module.ModuleError, OSError, ValueError) as e:
+        print(f"Konferenz-Modul nicht installiert: {e}", flush=True)
+        set_conference(installing=False, message=f"Konferenz-Modul nicht installiert: {e}")
 
 
 async def page(request):
@@ -479,39 +565,18 @@ async def page(request):
 
 
 async def asset(request):
-    name = {"montserrat.ttf": "Montserrat.ttf", "gvl_logo.png": "gvl_logo.png"}.get(request.match_info["name"])
-    if not name:
+    path = {"montserrat.ttf": gvl_common.FONT, "gvl_logo.png": gvl_common.LOGO}.get(request.match_info["name"])
+    if not path:
         raise web.HTTPNotFound()
-    return web.FileResponse(os.path.join(WEB_DIR, name), headers={"Cache-Control": "max-age=86400"})
+    return web.FileResponse(path, headers={"Cache-Control": "max-age=86400"})
 
 
 async def events(request):
-    if len(studio.clients) >= MAX_CLIENTS:
-        return web.json_response({"ok": False}, status=429)
-    response = web.StreamResponse(headers={"Content-Type": "text/event-stream", "Cache-Control": "no-cache"})
-    await response.prepare(request)
-    queue = asyncio.Queue(64)
-    studio.clients.add(queue)
-    queue.put_nowait(json.dumps(studio.message(), ensure_ascii=False, separators=(",", ":")))
-    try:
-        while True:
-            try:
-                text = await asyncio.wait_for(queue.get(), PING_EVERY)
-            except asyncio.TimeoutError:
-                await response.write(b": ping\n\n")
-                continue
-            if text is None:
-                break
-            await response.write(f"data: {text}\n\n".encode("utf-8"))
-    except (ConnectionResetError, asyncio.CancelledError):
-        pass
-    finally:
-        studio.clients.discard(queue)
-    return response
+    return await studio.hub.stream(request, studio.message())
 
 
 async def command(request):
-    data = await body_of(request)
+    data = await service.body_of(request)
     slot = data.get("slot")
     action = data.get("action")
     if action == "show" and slot in studio.visible and isinstance(data.get("graphic"), dict):
@@ -530,20 +595,23 @@ async def command(request):
     elif action == "clip":
         save_clip("")
     elif action == "pickFolder":
-        background.append(asyncio.create_task(pick_folder()))
+        later(pick_folder())
     elif action == "openFolder":
         await asyncio.to_thread(open_folder)
     elif action == "settings" and isinstance(data.get("values"), dict):
         for name, value in data["values"].items():
             if name == "socials" and isinstance(value, dict):
                 studio.settings["socials"] = {key: str(value.get(key) or "").strip()[:SOCIAL_MAX] for key in DEFAULT_SETTINGS["socials"]}
+            elif name == "conference" and isinstance(value, dict):
+                studio.settings["conference"] = clean_conference({**studio.settings["conference"], **value})
+                feed.notify()
             elif name in studio.settings and type(value) is type(studio.settings[name]):
                 studio.settings[name] = value
         save_settings()
         studio.broadcast()
-        background.append(asyncio.create_task(refresh_plan()))
+        later(refresh_plan())
     elif action == "update":
-        background.append(asyncio.create_task(run_update()))
+        later(run_update())
     elif action == "openRelease" and studio.update["page"].startswith("https://github.com/"):
         os.startfile(studio.update["page"])
     elif action == "transition" and data.get("style") in TRANSITIONS and (not data.get("scene") or data.get("scene") in studio.scenes):
@@ -552,12 +620,18 @@ async def command(request):
     elif action == "cut":
         take_cut(str(data.get("id") or ""))
         return web.json_response({"ok": True})
-    elif action == "openApp" and getattr(sys, "frozen", False):
+    elif action == "openApp" and FROZEN:
         updater.launch(os.path.join(EXE_DIR, installer.REQUIRED_FILES[0]), "--app")
     elif action == "updateSeen" and studio.update["state"] == "done":
         set_update(**NO_UPDATE)
     elif action == "tunnel":
-        background.append(asyncio.create_task(start_tunnel() if data.get("value") else stop_tunnel()))
+        later(studio.tunnel.start() if data.get("value") else stop_tunnel())
+    elif action == "conference":
+        later(start_conference() if data.get("value") else stop_conference())
+    elif action == "conferenceStream":
+        replay_command("conference|stream|" + ("1" if data.get("value") else "0"))
+    elif action == "installModule":
+        later(install_module())
     studio.send({"type": "command", "action": action, "slot": slot, "graphic": data.get("graphic"),
                  "auto": studio.auto, "visible": studio.visible})
     return web.json_response({"ok": True})
@@ -579,39 +653,40 @@ async def schedule(request):
 
 
 async def link(request):
-    data = await body_of(request)
+    data = await service.body_of(request)
     studio.job, studio.by = str(data.get("jobId") or "studio"), str(data.get("by") or "")
     studio.pushed = time.time()
     studio.stale = False
     studio.broadcast()
+    feed.notify()
     return web.json_response({"ok": True})
 
 
 async def unlink(request):
-    data = await body_of(request)
+    data = await service.body_of(request)
     if studio.job == str(data.get("jobId") or "studio"):
         studio.unlink()
     return web.json_response({"ok": True})
 
 
 async def push(request):
-    data = await body_of(request)
+    data = await service.body_of(request)
     if not studio.job or studio.job != str(data.get("jobId") or "studio"):
         return web.json_response({"ok": True, "gone": True})
     studio.pushed = time.time()
     studio.stale = False
     if isinstance(data.get("match"), dict):
         studio.match = data["match"]
-        background.append(asyncio.create_task(resolve_assets()))
-        del background[:-20]
+        later(resolve_assets())
     fresh = data.get("events") if isinstance(data.get("events"), list) else []
     studio.events.extend(fresh)
     del studio.events[:-20]
     studio.send({**studio.message(), "fresh": fresh})
+    feed.notify(fresh)
     if studio.settings["autoClip"] and studio.buffer:
         for event in fresh:
             if isinstance(event, dict) and event.get("type") == "goal":
-                background.append(asyncio.create_task(goal_clip(event)))
+                later(goal_clip(event))
     return web.json_response({"ok": True, "gone": False})
 
 
@@ -662,8 +737,7 @@ def start_transition(style, scene):
     studio.pending_cut = (cut_id, scene) if scene else None
     studio.send({"type": "command", "action": "transition", "graphic": {"id": cut_id, "style": style, "scene": scene}})
     if scene:
-        background.append(asyncio.create_task(cut_fallback(cut_id)))
-        del background[:-20]
+        later(cut_fallback(cut_id))
 
 
 def take_cut(cut_id):
@@ -706,6 +780,21 @@ async def store_clip(path):
     studio.broadcast()
 
 
+def conference_event(parts):
+    """Meldungen des Lua-Skripts zum Stream-Dienst: on, off, busy, missing."""
+    state = parts[0]
+    if state == "on":
+        set_conference(obs="on", streamId=parts[1] if len(parts) > 1 else studio.conference["streamId"])
+    elif state == "off":
+        set_conference(obs="off")
+    elif state == "busy":
+        set_conference(obs="off", active=False, connection="off", message="Erst den laufenden Stream beenden, dann für die Konferenz senden.")
+        later(feed.stop())
+    elif state == "missing":
+        set_conference(obs="missing", active=False, connection="off", message="Das GVL Konferenz-Modul fehlt in OBS.")
+        later(feed.stop())
+
+
 async def watch_replay():
     while True:
         await asyncio.sleep(REPLAY_POLL)
@@ -727,6 +816,12 @@ async def watch_replay():
                 studio.broadcast()
             elif line.startswith("saved|"):
                 await store_clip(line.split("|", 1)[1])
+            elif line.startswith("conference|"):
+                conference_event(line.split("|")[1:])
+            elif line.startswith("streaming|"):
+                set_conference(streaming=line.endswith("|1"))
+            elif line.startswith("module|") and studio.conference["obs"] != "on":
+                set_conference(obs="off" if line.endswith("|1") else "missing")
 
 
 async def watch_links():
@@ -738,15 +833,18 @@ async def watch_links():
 
 
 async def watch_obs(app):
+    """Beendet den Dienst mit dem OBS, das ihn gestartet hat. Gemerkt wird der Prozess, nicht nur der Name, damit ein
+    schnell neu gestartetes OBS nicht den alten Dienst am Leben haelt und den Port blockiert."""
     started = time.time()
-    seen = False
+    watched = set()
     while True:
         await asyncio.sleep(OBS_CHECK_EVERY)
-        running = installer.obs_running()
-        seen = seen or running
-        if (seen and not running) or (not seen and time.time() - started > OBS_START_WAIT):
+        running = obs.obs_pids()
+        watched = watched or running
+        if (watched and not watched & running) or (not watched and time.time() - started > OBS_START_WAIT):
+            await feed.stop()
             await stop_tunnel()
-            if seen and getattr(sys, "frozen", False):
+            if watched and FROZEN:
                 await asyncio.to_thread(installer.register_stingers, EXE_DIR)
             os._exit(0)
 
@@ -779,7 +877,7 @@ async def watch_updates():
 
 
 async def run_update():
-    if studio.update["state"] not in ("available", "error") or not studio.update["url"] or studio.tunnel["state"] != "off":
+    if studio.update["state"] not in ("available", "error") or not studio.update["url"] or studio.tunnel.state["state"] != "off" or studio.conference["active"]:
         return
     set_update(state="downloading", progress=0, message="")
     loop = asyncio.get_running_loop()
@@ -831,25 +929,25 @@ async def on_startup(app):
         if os.path.isfile(path):
             os.remove(path)
     http = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20), headers={"User-Agent": "Mozilla/5.0"})
-    background.append(asyncio.create_task(watch_links()))
-    background.append(asyncio.create_task(watch_plan()))
-    background.append(asyncio.create_task(watch_replay()))
-    background.append(asyncio.create_task(clean_stage()))
+    later(watch_links())
+    later(watch_plan())
+    later(watch_replay())
+    later(clean_stage())
     after_update()
-    if getattr(sys, "frozen", False):
-        background.append(asyncio.create_task(watch_updates()))
+    if FROZEN:
+        later(watch_updates())
     if "--no-obs-watch" not in sys.argv:
-        background.append(asyncio.create_task(watch_obs(app)))
+        later(watch_obs(app))
     with open(READY_FILE, "w", encoding="utf-8") as f:
         f.write(str(time.time()))
 
 
 async def on_shutdown(app):
-    for queue in list(studio.clients):
-        queue.put_nowait(None)
+    studio.hub.close()
 
 
 async def on_cleanup(app):
+    await feed.close()
     await stop_tunnel()
     for task in background:
         task.cancel()
@@ -866,7 +964,7 @@ def open_log():
 
 
 async def game_data(request):
-    body = await body_of(request)
+    body = await service.body_of(request)
     data = body.get("data")
     if not studio.job or studio.job != str(body.get("jobId") or "studio") or not isinstance(data, dict):
         return web.json_response({"ok": False})
@@ -883,7 +981,7 @@ async def game_data(request):
 
 
 async def poll(request):
-    data = await body_of(request)
+    data = await service.body_of(request)
     if not studio.job or studio.job != str(data.get("jobId") or "studio"):
         return web.json_response({"replay": None})
     seconds, studio.replay = studio.replay, None
@@ -893,7 +991,7 @@ async def poll(request):
 def main():
     if sys.stdout is None:
         open_log()
-    app = web.Application(middlewares=[guard], client_max_size=512 * 1024)
+    app = web.Application(middlewares=[service.make_guard(HOST, PORT, lambda: studio.secret)], client_max_size=512 * 1024)
     app.router.add_get("/media/{name:dock|overlay}", page)
     app.router.add_get("/media/assets/{name}", asset)
     app.router.add_get("/media/events", events)

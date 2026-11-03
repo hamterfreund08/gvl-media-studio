@@ -14,10 +14,15 @@ local CHECK_MS = 500
 local COMMAND_POLL_MS = 100
 local RESTORE_MS = 400
 local MAX_CHECKS = 120
+local CONFERENCE_TYPE = "vdoninja_service"
+local CONFERENCE_BACKUP = "conference_backup.json"
 
 local shell = ffi.load("shell32")
 local checks = 0
 local restore_name = nil
+local pending = {}
+local save_requested = false
+local restore_after_stop = false
 
 local function file_exists(path)
 	local file = io.open(path, "r")
@@ -194,12 +199,173 @@ local function switch_scene(name)
 	obs.timer_add(restore_transition, RESTORE_MS)
 end
 
+local function backup_path()
+	return script_path() .. CONFERENCE_BACKUP
+end
+
+local function module_ready()
+	return obs.obs_service_get_display_name(CONFERENCE_TYPE) ~= nil
+end
+
+local function current_service_type()
+	local service = obs.obs_frontend_get_streaming_service()
+	if service == nil then
+		return ""
+	end
+	return obs.obs_service_get_type(service) or ""
+end
+
+local function current_stream_id()
+	local service = obs.obs_frontend_get_streaming_service()
+	if service == nil then
+		return ""
+	end
+	local settings = obs.obs_service_get_settings(service)
+	local stream_id = obs.obs_data_get_string(settings, "stream_id")
+	obs.obs_data_release(settings)
+	return stream_id
+end
+
+local function use_service(service)
+	obs.obs_frontend_set_streaming_service(service)
+	obs.obs_frontend_save_streaming_service()
+	obs.obs_service_release(service)
+end
+
+local function report_conference()
+	emit("module|" .. (module_ready() and "1" or "0"))
+	if current_service_type() == CONFERENCE_TYPE then
+		emit("conference|on|" .. current_stream_id())
+	else
+		emit("conference|off")
+	end
+	emit("streaming|" .. (obs.obs_frontend_streaming_active() and "1" or "0"))
+end
+
+local function start_conference(stream_id, password)
+	if not module_ready() then
+		emit("conference|missing")
+		return
+	end
+	if obs.obs_frontend_streaming_active() and current_service_type() ~= CONFERENCE_TYPE then
+		emit("conference|busy")
+		return
+	end
+	local current = obs.obs_frontend_get_streaming_service()
+	if current ~= nil and obs.obs_service_get_type(current) ~= CONFERENCE_TYPE then
+		local backup = obs.obs_data_create()
+		local settings = obs.obs_service_get_settings(current)
+		obs.obs_data_set_string(backup, "type", obs.obs_service_get_type(current))
+		obs.obs_data_set_obj(backup, "settings", settings)
+		obs.obs_data_save_json(backup, backup_path())
+		obs.obs_data_release(settings)
+		obs.obs_data_release(backup)
+	end
+	local settings = obs.obs_data_create()
+	obs.obs_data_set_string(settings, "stream_id", stream_id)
+	obs.obs_data_set_string(settings, "password", password)
+	local service = obs.obs_service_create(CONFERENCE_TYPE, "GVL Konferenz", settings, nil)
+	obs.obs_data_release(settings)
+	if service == nil then
+		emit("conference|missing")
+		return
+	end
+	use_service(service)
+	emit("conference|on|" .. stream_id)
+end
+
+local function restore_service()
+	restore_after_stop = false
+	local service = nil
+	local backup = obs.obs_data_create_from_json_file(backup_path())
+	if backup ~= nil then
+		local kind = obs.obs_data_get_string(backup, "type")
+		local settings = obs.obs_data_get_obj(backup, "settings")
+		if kind ~= "" and kind ~= CONFERENCE_TYPE then
+			service = obs.obs_service_create(kind, "default_service", settings, nil)
+		end
+		if settings ~= nil then
+			obs.obs_data_release(settings)
+		end
+		obs.obs_data_release(backup)
+	end
+	if service == nil then
+		service = obs.obs_service_create("rtmp_common", "default_service", nil, nil)
+	end
+	if service ~= nil then
+		use_service(service)
+	end
+	os.remove(backup_path())
+	emit("conference|off")
+end
+
+local function stop_conference()
+	if current_service_type() ~= CONFERENCE_TYPE then
+		os.remove(backup_path())
+		emit("conference|off")
+	elseif obs.obs_frontend_streaming_active() then
+		restore_after_stop = true
+		obs.obs_frontend_streaming_stop()
+	else
+		restore_service()
+	end
+end
+
+-- Timer laufen im Grafik-Thread. Den Stream-Dienst stellen wir deshalb im Speicher-Callback um, den OBS im
+-- Oberflächen-Thread aufruft. In der Regie hat das Anlegen aus dem Timer OBS einfrieren lassen.
+local function run_pending()
+	local commands = pending
+	pending = {}
+	save_requested = false
+	for _, parts in ipairs(commands) do
+		if parts[1] == "start" then
+			start_conference(parts[2], parts[3])
+		elseif parts[1] == "stop" then
+			stop_conference()
+		end
+	end
+end
+
+local function on_save(_, saving)
+	if saving and #pending > 0 then
+		run_pending()
+	end
+end
+
+local function queue_conference(parts)
+	table.insert(pending, parts)
+	if not save_requested then
+		save_requested = true
+		obs.obs_frontend_save()
+	end
+end
+
+local function conference_command(command)
+	local parts = {}
+	for part in (command .. "|"):gmatch("([^|]*)|") do
+		table.insert(parts, part)
+	end
+	local kind = parts[2]
+	if kind == "start" and parts[3] and parts[4] and parts[3] ~= "" and parts[4] ~= "" then
+		queue_conference({ "start", parts[3], parts[4] })
+	elseif kind == "stop" then
+		queue_conference({ "stop" })
+	elseif kind == "stream" then
+		if parts[3] == "1" and current_service_type() == CONFERENCE_TYPE and not obs.obs_frontend_streaming_active() then
+			obs.obs_frontend_streaming_start()
+		elseif parts[3] == "0" and current_service_type() == CONFERENCE_TYPE and obs.obs_frontend_streaming_active() then
+			obs.obs_frontend_streaming_stop()
+		end
+	end
+end
+
 local function wait_for_service()
 	checks = checks + 1
 	if file_exists(ready_file()) then
 		obs.timer_remove(wait_for_service)
 		reload_overlay()
 		report_scenes()
+		report_conference()
 	elseif checks >= MAX_CHECKS then
 		obs.timer_remove(wait_for_service)
 	end
@@ -226,6 +392,8 @@ local function poll_commands()
 			obs.obs_frontend_replay_buffer_save()
 		elseif command:sub(1, 6) == "scene|" then
 			switch_scene(command:sub(7))
+		elseif command:sub(1, 11) == "conference|" then
+			conference_command(command)
 		end
 	end
 end
@@ -237,6 +405,13 @@ local function on_event(event)
 		emit("stopped")
 	elseif event == obs.OBS_FRONTEND_EVENT_REPLAY_BUFFER_SAVED then
 		emit("saved|" .. tostring(obs.obs_frontend_get_last_replay()))
+	elseif event == obs.OBS_FRONTEND_EVENT_STREAMING_STARTED then
+		emit("streaming|1")
+	elseif event == obs.OBS_FRONTEND_EVENT_STREAMING_STOPPED then
+		emit("streaming|0")
+		if restore_after_stop then
+			restore_service()
+		end
 	end
 	if event == obs.OBS_FRONTEND_EVENT_FINISHED_LOADING or event == obs.OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED then
 		ensure_overlay()
@@ -272,6 +447,7 @@ end
 function script_load(_)
 	start_service()
 	obs.obs_frontend_add_event_callback(on_event)
+	obs.obs_frontend_add_save_callback(on_save)
 	obs.timer_add(wait_for_service, CHECK_MS)
 	obs.timer_add(poll_commands, COMMAND_POLL_MS)
 end

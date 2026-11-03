@@ -54,7 +54,7 @@ REPLAY_CMD_FILE = os.path.join(EXE_DIR, "replay_cmd.txt")
 REPLAY_EVENT_FILE = os.path.join(EXE_DIR, "replay_events.txt")
 LOG_MAX_BYTES = 512 * 1024
 
-VERSION = "1.15.0"
+VERSION = "1.15.1"
 HOST = "127.0.0.1"
 PORT = 40231
 
@@ -847,12 +847,14 @@ async def watch_links():
 
 async def watch_obs(app):
     """Beendet den Dienst mit dem OBS, das ihn gestartet hat. Gemerkt wird der Prozess, nicht nur der Name, damit ein
-    schnell neu gestartetes OBS nicht den alten Dienst am Leben haelt und den Port blockiert."""
+    schnell neu gestartetes OBS nicht den alten Dienst am Leben haelt und den Port blockiert. Gestartet aus OBS ist
+    das der Elternprozess, sonst jedes OBS, das beim ersten Blick laeuft."""
     started = time.time()
-    watched = set()
+    owner = await asyncio.to_thread(obs.owner_obs)
+    watched = {owner} if owner else set()
     while True:
         await asyncio.sleep(OBS_CHECK_EVERY)
-        running = obs.obs_pids()
+        running = await asyncio.to_thread(obs.obs_pids)
         watched = watched or running
         if (watched and not watched & running) or (not watched and time.time() - started > OBS_START_WAIT):
             await feed.stop()

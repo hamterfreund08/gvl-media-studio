@@ -22,6 +22,9 @@ local checks = 0
 local restore_name = nil
 local pending = {}
 local save_requested = false
+local save_requested_at = 0
+local SAVE_RETRY_NS = 1500000000
+local queue_ui
 local restore_after_stop = false
 
 local function file_exists(path)
@@ -152,7 +155,6 @@ local function find_transition(test)
 end
 
 local function restore_transition()
-	obs.timer_remove(restore_transition)
 	if restore_name == nil then
 		return
 	end
@@ -181,6 +183,11 @@ local function use_cut()
 	obs.obs_source_release(cut)
 end
 
+local function restore_due()
+	obs.timer_remove(restore_due)
+	queue_ui({ "restore" })
+end
+
 local function switch_scene(name)
 	local target = obs.obs_get_source_by_name(name)
 	if target == nil then
@@ -195,8 +202,8 @@ local function switch_scene(name)
 		obs.obs_frontend_set_current_scene(target)
 	end
 	obs.obs_source_release(target)
-	obs.timer_remove(restore_transition)
-	obs.timer_add(restore_transition, RESTORE_MS)
+	obs.timer_remove(restore_due)
+	obs.timer_add(restore_due, RESTORE_MS)
 end
 
 local function backup_path()
@@ -311,8 +318,9 @@ local function stop_conference()
 	end
 end
 
--- Timer laufen im Grafik-Thread. Den Stream-Dienst stellen wir deshalb im Speicher-Callback um, den OBS im
--- Oberflächen-Thread aufruft. In der Regie hat das Anlegen aus dem Timer OBS einfrieren lassen.
+-- Timer laufen im Grafik-Thread. Szene, Übergang und Stream-Dienst darf man dort nicht umstellen: OBS wartet dafür
+-- auf den Oberflächen-Thread, der seinerseits auf dieses Skript wartet, und friert ein. Solche Befehle laufen
+-- deshalb im Speicher-Callback, den OBS im Oberflächen-Thread aufruft.
 local function run_pending()
 	local commands = pending
 	pending = {}
@@ -322,6 +330,10 @@ local function run_pending()
 			start_conference(parts[2], parts[3])
 		elseif parts[1] == "stop" then
 			stop_conference()
+		elseif parts[1] == "scene" then
+			switch_scene(parts[2])
+		elseif parts[1] == "restore" then
+			restore_transition()
 		end
 	end
 end
@@ -332,10 +344,19 @@ local function on_save(_, saving)
 	end
 end
 
-local function queue_conference(parts)
+queue_ui = function(parts)
 	table.insert(pending, parts)
 	if not save_requested then
 		save_requested = true
+		save_requested_at = obs.os_gettime_ns()
+		obs.obs_frontend_save()
+	end
+end
+
+-- Während OBS lädt oder sich beendet, speichert es nicht. Dann bleibt der Befehl liegen, bis ein neuer Versuch klappt.
+local function retry_save()
+	if save_requested and #pending > 0 and obs.os_gettime_ns() - save_requested_at > SAVE_RETRY_NS then
+		save_requested_at = obs.os_gettime_ns()
 		obs.obs_frontend_save()
 	end
 end
@@ -347,9 +368,9 @@ local function conference_command(command)
 	end
 	local kind = parts[2]
 	if kind == "start" and parts[3] and parts[4] and parts[3] ~= "" and parts[4] ~= "" then
-		queue_conference({ "start", parts[3], parts[4] })
+		queue_ui({ "start", parts[3], parts[4] })
 	elseif kind == "stop" then
-		queue_conference({ "stop" })
+		queue_ui({ "stop" })
 	elseif kind == "stream" then
 		if parts[3] == "1" and current_service_type() == CONFERENCE_TYPE and not obs.obs_frontend_streaming_active() then
 			obs.obs_frontend_streaming_start()
@@ -372,6 +393,7 @@ local function wait_for_service()
 end
 
 local function poll_commands()
+	retry_save()
 	local path = script_path() .. "replay_cmd.txt"
 	local file = io.open(path, "r")
 	if not file then
@@ -391,7 +413,7 @@ local function poll_commands()
 		elseif command == "save" then
 			obs.obs_frontend_replay_buffer_save()
 		elseif command:sub(1, 6) == "scene|" then
-			switch_scene(command:sub(7))
+			queue_ui({ "scene", command:sub(7) })
 		elseif command:sub(1, 11) == "conference|" then
 			conference_command(command)
 		end
